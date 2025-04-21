@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.optimize import minimize
 from scipy.stats import norm
+from scipy import stats
 
 def fit_gbm(prices, dt=1/252):
     """
@@ -398,3 +399,14 @@ def fit_garch(series, p=1, q=1):
         "aic": aic,
         "bic": bic
     }
+
+def fit_distributions(data, distributions=['norm', 't', 'laplace', 'lognorm', 'beta', 'skewnorm', 'gamma', 'genpareto', 'genextreme', 'cauchy', 'invgauss', 'loggamma', 'exponweib']):
+    results = {}
+    for dist_name in distributions:
+        dist = getattr(stats, dist_name)
+        params = dist.fit(data)
+        log_likelihood = np.sum(dist.logpdf(data, *params))
+        aic = 2 * len(params) - 2 * log_likelihood
+        results[dist_name] = {"params": params, "aic": aic}
+    return sorted(results.items(), key=lambda x: x[1]["aic"])
+
