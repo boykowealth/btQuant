@@ -108,6 +108,20 @@ def sim_garch(omega, alpha1, beta1, n_steps, n_sim):
 
 # ===== Master Simulation Dispatcher ===== #
 def sim(model: str, params: dict, n_steps: int, n_sim: int) -> pd.DataFrame:
+    """
+    Simulates various time series models and returns the simulated paths as a pandas DataFrame.
+
+    Parameters:
+        model (str): The name of the model to simulate. Possible values are 'gbm', 'ou', 'levy_ou', 'ar1', 
+                    'arima', 'markov_switching', 'arch', 'garch'.
+        params (dict): A dictionary containing the parameters for the selected model.
+        n_steps (int): The number of time steps in each simulation.
+        n_sim (int): The number of simulations to generate.
+
+    Returns:
+        pd.DataFrame: A DataFrame where each column represents one simulation, and each row represents one time step.
+    """
+
     model = model.lower()
     
     if model == 'gbm':
