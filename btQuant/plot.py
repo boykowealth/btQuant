@@ -159,15 +159,3 @@ def plot_chart(
     )
 
     fig.show()
-
-df = pd.DataFrame({
-    'Date': pd.date_range('2023-01-01', periods=100),
-    'BTC': np.random.randn(100).cumsum(),
-    'ETH': np.random.randn(100).cumsum(),
-    'SOL': np.random.randn(100).cumsum()
-})
-
-plot_chart(df, chart_type='scatter', x='Date', y=['BTC'], title='BTC Price', regression_line=True)
-plot_chart(df, chart_type='3dscatter', x='SOL', y=['BTC', 'ETH'], title='3D Crypto Performance')
-plot_chart(df, chart_type='3dline', x='SOL', y=['BTC', 'ETH'], title='3D Line Chart Example')
-plot_chart(df, chart_type='3dsurface', x='SOL', y=['BTC', 'ETH'], title='3D Surface Example')
