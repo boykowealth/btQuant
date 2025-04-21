@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 from numpy.random import normal, poisson
 
-# ===== Geometric Brownian Motion (GBM) ===== #
 def sim_gbm(mu, sigma, n_steps, n_sim, s0=1.0, dt=1/252):
     sims = []
     for _ in range(n_sim):
@@ -11,7 +10,6 @@ def sim_gbm(mu, sigma, n_steps, n_sim, s0=1.0, dt=1/252):
         sims.append(path)
     return np.array(sims)
 
-# ===== Ornstein-Uhlenbeck (OU) ===== #
 def sim_ou(theta, mu, sigma, n_steps, n_sim, x0=0.0, dt=1/252):
     sims = []
     for _ in range(n_sim):
@@ -22,7 +20,6 @@ def sim_ou(theta, mu, sigma, n_steps, n_sim, x0=0.0, dt=1/252):
         sims.append(x)
     return np.array(sims)
 
-# ===== Lévy OU (Jump Diffusion OU) ===== #
 def sim_levy_ou(theta, mu, sigma, jump_lambda, jump_mu, jump_sigma, n_steps, n_sim, x0=0.0, dt=1/252):
     sims = []
     for _ in range(n_sim):
@@ -36,7 +33,6 @@ def sim_levy_ou(theta, mu, sigma, jump_lambda, jump_mu, jump_sigma, n_steps, n_s
         sims.append(x)
     return np.array(sims)
 
-# ===== AR(1) ===== #
 def sim_ar1(phi, intercept, sigma, n_steps, n_sim, x0=0.0):
     sims = []
     for _ in range(n_sim):
@@ -46,7 +42,6 @@ def sim_ar1(phi, intercept, sigma, n_steps, n_sim, x0=0.0):
         sims.append(x)
     return np.array(sims)
 
-# ===== ARIMA (1,1,1) default ===== #
 def sim_arima(ar, ma, d, sigma, n_steps, n_sim, x0=0.0):
     from statsmodels.tsa.arima_process import ArmaProcess
     sims = []
@@ -60,7 +55,6 @@ def sim_arima(ar, ma, d, sigma, n_steps, n_sim, x0=0.0):
         sims.append(series + x0)
     return np.array(sims)
 
-# ===== Markov Switching (simplified 2-regime) ===== #
 def sim_markov_switching(mu1, sigma1, mu2, sigma2, p11, p22, n_steps, n_sim, x0=0.0):
     sims = []
     for _ in range(n_sim):
@@ -76,7 +70,6 @@ def sim_markov_switching(mu1, sigma1, mu2, sigma2, p11, p22, n_steps, n_sim, x0=
         sims.append(x)
     return np.array(sims)
 
-# ===== ARCH(1) ===== #
 def sim_arch(alpha0, alpha1, n_steps, n_sim):
     sims = []
     for _ in range(n_sim):
@@ -91,7 +84,6 @@ def sim_arch(alpha0, alpha1, n_steps, n_sim):
         sims.append(x)
     return np.array(sims)
 
-# ===== GARCH(1,1) ===== #
 def sim_garch(omega, alpha1, beta1, n_steps, n_sim):
     sims = []
     for _ in range(n_sim):
@@ -106,7 +98,6 @@ def sim_garch(omega, alpha1, beta1, n_steps, n_sim):
         sims.append(x)
     return np.array(sims)
 
-# ===== Master Simulation Dispatcher ===== #
 def sim(model: str, params: dict, n_steps: int, n_sim: int) -> pd.DataFrame:
     """
     Simulates various time series models and returns the simulated paths as a pandas DataFrame.

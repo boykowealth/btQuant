@@ -2,7 +2,6 @@ import numpy as np
 from scipy.optimize import minimize
 from scipy.stats import norm
 
-# ===== Geometric Brownian Motion (GBM) Fit ===== #
 def fit_gbm(prices, dt=1/252):
     """
     Fits a Geometric Brownian Motion (GBM) model to the provided price data.
@@ -24,7 +23,6 @@ def fit_gbm(prices, dt=1/252):
     sigma = np.std(log_returns) / np.sqrt(dt)
     return {"mu": mu, "sigma": sigma}
 
-# ===== Ornstein-Uhlenbeck (OU) Fit ===== #
 def fit_ou(spread, dt=1/252):
     """
     Fits an Ornstein-Uhlenbeck (OU) process to the provided spread data.
@@ -59,7 +57,6 @@ def fit_ou(spread, dt=1/252):
     return {"theta": theta / dt, "mu": mu, "sigma": sigma * np.sqrt(1 / dt), "half_life": half_life}
 
 
-# ===== Lévy OU Fit (Jump Diffusion OU) ===== #
 def fit_levy_ou(spread, dt=1/252):
     """
     Fits a Lévy Ornstein-Uhlenbeck (OU) model, also known as Jump Diffusion OU, to the provided spread data.
@@ -109,7 +106,6 @@ def fit_levy_ou(spread, dt=1/252):
         "jump_sigma": jump_sigma
     }
 
-# ===== AR(1) Fit (without external package) ===== #
 def fit_ar1(series):
     """
     Fits an AR(1) (AutoRegressive of order 1) model to the given time series data.
@@ -143,7 +139,6 @@ def fit_ar1(series):
         "sigma2": sigma2
     }
 
-# ===== ARIMA Fit (without external package) ===== #
 def fit_arima(series, order=(1, 1, 1)):
     """
     Fits an ARIMA model to the given time series data.
@@ -199,7 +194,6 @@ def fit_arima(series, order=(1, 1, 1)):
         "bic": bic
     }
 
-# ===== Markov Switching Fit ===== #
 def fit_markov_switching(series, k_regimes=2, max_iter=100, tol=1e-6):
     """
     Fits a Markov Switching model to the given time series data.
@@ -293,7 +287,6 @@ def fit_markov_switching(series, k_regimes=2, max_iter=100, tol=1e-6):
         "llf": ll
     }
 
-# ===== ARCH Fit ===== #
 def fit_arch(series, p=1):
     """
     Fits an ARCH(p) model to the given time series data.
@@ -347,7 +340,6 @@ def fit_arch(series, p=1):
         "bic": bic
     }
 
-# ===== GARCH Fit ===== #
 def fit_garch(series, p=1, q=1):
     """
     Fits a GARCH(p, q) model to the given time series data.
