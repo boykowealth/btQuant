@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "btQuant"
+version = "0.1.0"
+authors = [
+  { name="Brayden Boyko", email="braydenboyko@boykowealth.com" }
+]
+description = "Boyko Terminal Quantitative Finance Python Package Companion."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "GPL" }
+dependencies = [
+  pandas,
+  numpy
+]
+
+[project.urls]
+Homepage = "https://github.com/boykowealth/btQuant"
