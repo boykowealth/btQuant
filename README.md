@@ -1,7 +1,7 @@
 # Boyko Terminal Quant (btQuant)
 Boyko Terminal Quantitative Finance Python Package Companion. 
 
-![PyPI - Downloads](https://img.shields.io/pypi/dm/btQuant)
+[![Downloads](https://pepy.tech/badge/btQuant)](https://pepy.tech/project/btQuant)
 
 ## About The Boyko Terminal
 
