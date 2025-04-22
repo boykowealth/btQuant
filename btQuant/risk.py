@@ -186,3 +186,45 @@ def excess_kurtosis_ratio(returns):
     - Excess kurtosis ratio (Normal = 1)
     """
     return stats.kurtosis(returns) / 3
+
+def copula_crash(returns_x, returns_y, confidence_level=0.95):
+    """
+    Copula-based crash risk modeling using a Gaussian copula to estimate tail dependence.
+    
+    :param returns_x: Series or array of asset X returns
+    :param returns_y: Series or array of asset Y returns
+    :param confidence_level: Confidence level for crash risk estimation (default is 95%)
+    :return: Joint probability of extreme losses
+    """
+
+    u_x = stats.rankdata(returns_x) / (len(returns_x) + 1)
+    u_y = stats.rankdata(returns_y) / (len(returns_y) + 1)
+    
+    rho = np.corrcoef(returns_x, returns_y)[0, 1]
+    
+    copula = stats.norm.ppf(u_x), stats.norm.ppf(u_y)
+    
+    joint_loss_prob = stats.multivariate_normal.cdf(copula, mean=[0, 0], cov=[[1, rho], [rho, 1]])
+    
+    return joint_loss_prob if joint_loss_prob < 1 - confidence_level else 1 - confidence_level
+
+def copula_gain(returns_x, returns_y, confidence_level=0.95):
+    """
+    Copula-based right-tail dependence modeling for extreme upward movements.
+    
+    :param returns_x: Series or array of asset X returns
+    :param returns_y: Series or array of asset Y returns
+    :param confidence_level: Confidence level for extreme gain estimation (default is 95%)
+    :return: Joint probability of extreme gains
+    """
+
+    u_x = stats.rankdata(returns_x) / (len(returns_x) + 1)
+    u_y = stats.rankdata(returns_y) / (len(returns_y) + 1)
+    
+    rho = np.corrcoef(returns_x, returns_y)[0, 1]
+    theta = 2 * (1 - rho) 
+    
+    joint_gain_prob = (u_x ** -theta + u_y ** -theta - 1) ** (-1/theta)
+    
+    return joint_gain_prob if joint_gain_prob > confidence_level else confidence_level
+
