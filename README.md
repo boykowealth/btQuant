@@ -9,7 +9,9 @@ The Boyko Terminal is a comprehensive quantitative finance data research platfor
 
 ## About btQuant
 
-The Boyko Terminal Quant package is available on PyPi, and acts as the companion tool package for developers. It allows developers to create customizable code with the tools available on the Boyko Terminal. The goal is to provide free access to the Boyko Wealth pipeline directly in Python. __Please Note:__ Data is not available through the btQuant toolset.
+The Boyko Terminal Quant package is available on PyPi, and acts as the companion tool package for developers. It allows developers to create customizable code with the tools available on the Boyko Terminal. The goal is to provide free access to the Boyko Wealth pipeline directly in Python. 
+
+__Please Note:__ Data is not available through the btQuant toolset.
 
 ## 🔧 Installation
 
