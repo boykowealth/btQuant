@@ -7,6 +7,7 @@ btQuant/dimensionReduction.py
 btQuant/factor.py
 btQuant/fit.py
 btQuant/ml.py
+btQuant/options.py
 btQuant/plot.py
 btQuant/portfolio.py
 btQuant/risk.py
