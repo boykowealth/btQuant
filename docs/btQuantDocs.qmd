@@ -1,0 +1,334 @@
+---
+title: "btQuant Documentation"
+author: Brayden Boyko
+format:
+  html:
+    code_folding: hide
+    self_contained: true
+    toc: true
+    search: true
+    dev: "png"
+    fig_embed: true
+    embed-resources: true
+execute:
+  echo: false
+---
+# General Information
+
+The Boyko Terminal Quant package is available on PyPi, and acts as the companion tool package for developers. It allows developers to create customizable code with the tools available on the Boyko Terminal. The goal is to provide free access to the Boyko Wealth pipeline directly in Python.
+
+__Please Note:__ Data is not available through the btQuant toolset.
+
+## 🔧 Installation
+
+Install btQuant via PyPI:
+
+```
+pip install btQuant
+```
+
+## 📖 Usage
+
+Here’s a basic example of how to use btQuant:
+
+```
+from btQuant.ml import kmeans
+```
+
+## 📜 License
+
+This project is licensed under GPL-3.0.
+
+## 📞 Contact
+
+For information regarding the btQuant package or Boyko Wealth, please contact any of the following:
+
++ Brayden Boyko (braydenboyko@boykowealth.com) (Canada)
++ Noah Shaffer (noahshaffer@boykowealth.com) (United States)
+
+---
+
+# Dimensionality Reduction Functions (btQuant.dimensionReduction)
+
+This section provides a detailed overview of four popular dimensionality reduction algorithms implemented in Python using NumPy:
+
+- Principal Component Analysis (PCA)
+- Linear Discriminant Analysis (LDA)
+- t-distributed Stochastic Neighbor Embedding (t-SNE)
+- Independent Component Analysis (ICA)
+
+## `pca()`
+
+### Description
+Performs **Principal Component Analysis (PCA)** on the input dataset to reduce its dimensionality while retaining the most important variance.
+
+### Parameters
+- `X` (`array-like`): Input data of shape `(n_samples, n_features)`, where each row is an observation.
+- `n_components` (`int`, optional): Number of principal components to retain. Defaults to `None`, meaning all components are retained.
+
+### Returns
+- `X_pca` (`array-like`): The projected data in the new feature space.
+- `eigenvalues` (`array`): The eigenvalues associated with each principal component.
+- `eigenvectors` (`array`): The eigenvectors (principal axes) used for projection.
+
+### Methodology
+1. Standardize the data by removing the mean and scaling to unit variance.
+2. Compute the covariance matrix.
+3. Perform eigen decomposition.
+4. Sort eigenvectors by eigenvalues in descending order.
+5. Project the data onto the top `n_components` eigenvectors.
+
+## `lda()`
+
+### Description
+Performs **Linear Discriminant Analysis (LDA)** for supervised dimensionality reduction by maximizing class separability.
+
+### Parameters
+- `X` (`array-like`): Input data of shape `(n_samples, n_features)`.
+- `y` (`array-like`): Class labels for each observation.
+- `n_components` (`int`, optional): Number of discriminant components to retain. Defaults to `None`.
+
+### Returns
+- `X_lda` (`array-like`): Projected data in the new space.
+- `eigenvalues` (`array`): Eigenvalues of the discriminant components.
+- `eigenvectors` (`array`): Linear discriminants.
+
+### Methodology
+1. Compute overall and per-class means.
+2. Calculate within-class scatter matrix \( S_w \) and between-class scatter matrix \( S_b \).
+3. Solve the generalized eigenvalue problem for \( S_w^{-1}S_b \).
+4. Sort components by eigenvalue.
+5. Project the data onto selected discriminant vectors.
+
+## `tsne()`
+
+### Description
+Simplified implementation of **t-distributed Stochastic Neighbor Embedding (t-SNE)** for nonlinear dimensionality reduction suitable for visualization.
+
+### Parameters
+- `X` (`array-like`): High-dimensional input data.
+- `n_components` (`int`): Target dimensionality (typically 2 or 3).
+- `perplexity` (`float`): Effective number of neighbors (typically 5–50).
+- `max_iter` (`int`): Number of iterations for optimization.
+- `learning_rate` (`float`): Gradient descent step size.
+
+### Returns
+- `Y` (`array-like`): Low-dimensional representation of the data.
+
+### Methodology
+1. Compute pairwise affinities in high-dimensional space.
+2. Initialize a low-dimensional map with random values.
+3. Compute pairwise similarities in low-dimensional space using Student’s t-distribution.
+4. Optimize layout via gradient descent.
+
+## `ica()`
+
+### Description
+Performs **Independent Component Analysis (ICA)** to find statistically independent sources in the data.
+
+### Parameters
+- `X` (`array-like`): Input data of shape `(n_samples, n_features)`.
+- `n_components` (`int`, optional): Number of independent components to extract.
+
+### Returns
+- `X_ica` (`array-like`): Data projected onto independent components.
+- `mixing_matrix` (`array`): Matrix used to reconstruct original signals from independent components.
+- `unmixing_matrix` (`array`): Matrix used to transform the data to independent components.
+
+### Methodology
+1. Center and whiten the data.
+2. Initialize random unmixing matrix `W`.
+3. Iteratively update `W` using a fixed-point algorithm based on non-Gaussianity (tanh non-linearity).
+4. Return the source signals and mixing matrices.
+
+---
+
+# Multifactor Asset Return Models (btQuant.factors)
+
+This section provides an overview and usage details for several multifactor models used to estimate expected asset returns. Each model incorporates various economic and market risk factors.
+
+## `fama_french3()`
+
+**Description:**  
+Estimates the expected return of an asset based on three factors: market excess return, size (SMB), and value (HML).
+
+**Parameters:**
+- `market_returns`: List of market excess returns.
+- `smb`: Small-minus-big factor (size effect).
+- `hml`: High-minus-low factor (value effect).
+- `beta_m`: Sensitivity to the market factor.
+- `beta_smb`: Sensitivity to the SMB factor.
+- `beta_hml`: Sensitivity to the HML factor.
+- `risk_free`: Risk-free rate, default is 2%.
+
+**Returns:** Expected asset return.
+
+
+## `carhart4()`
+
+**Description:**  
+Extends the Fama-French 3-factor model by adding a momentum factor to account for the tendency of past winners to continue outperforming.
+
+**Parameters:**
+- `market_returns`: List of market excess returns.
+- `smb`: Small-minus-big factor (size effect).
+- `hml`: High-minus-low factor (value effect).
+- `momentum`: Momentum factor.
+- `beta_m`: Sensitivity to the market factor.
+- `beta_smb`: Sensitivity to the SMB factor.
+- `beta_hml`: Sensitivity to the HML factor.
+- `beta_mom`: Sensitivity to the momentum factor.
+- `risk_free`: Risk-free rate, default is 2%.
+
+**Returns:** Expected asset return.
+
+
+## `apt()`
+
+**Description:**  
+Estimates the expected return based on multiple risk factors using the APT framework, assuming a linear relationship between risk factors and expected return.
+
+**Parameters:**
+- `risk_factors`: List of factor returns (e.g., GDP growth, inflation).
+- `factor_betas`: Sensitivities (beta values) to those factors.
+- `risk_free`: Risk-free rate, default is 2%.
+
+**Returns:** Expected asset return.
+
+
+## `nonlinear()`
+
+**Description:**  
+Accounts for nonlinear relationships between risk factors and expected returns using polynomial or logarithmic transformations.
+
+**Parameters:**
+- `risk_factors`: List of factor returns.
+- `factor_betas`: Sensitivities to each factor.
+- `nonlinearity`: Type of transformation ("polynomial" or "logarithmic").
+- `degree`: Degree for polynomial transformation.
+- `risk_free`: Risk-free rate, default is 2%.
+
+**Returns:** Expected asset return.
+
+
+## `liquidity()`
+
+**Description:**  
+Incorporates liquidity-related risk into expected returns, using bid-ask spreads and trading volume as proxies.
+
+**Parameters:**
+- `spread`: Bid-ask spreads.
+- `turnover`: Trading volume turnover.
+- `beta_spread`: Sensitivity to spread.
+- `beta_turnover`: Sensitivity to turnover.
+- `risk_free`: Risk-free rate, default is 2%.
+
+**Returns:** Expected asset return.
+
+
+## `sentiment()`
+
+**Description:**  
+Estimates return based on market sentiment scores.
+
+**Parameters:**
+- `sentiment_scores`: List of market sentiment scores.
+- `beta_sentiment`: Sensitivity to sentiment.
+- `risk_free`: Risk-free rate, default is 2%.
+
+**Returns:** Expected asset return.
+
+
+## `volatility()`
+
+**Description:**  
+Estimates expected return based on the volatility of the asset.
+
+**Parameters:**
+- `volatility_series`: List of asset volatilities.
+- `beta_volatility`: Sensitivity to volatility.
+- `risk_free`: Risk-free rate, default is 2%.
+
+**Returns:** Expected asset return.
+
+---
+
+# Stochastic Process Estimation Models (btQuant.fit)
+
+This section describes several time series models commonly used in financial analysis to model asset prices, spreads, or other economic series. Each model includes usage details and a description of the estimated parameters.
+
+---
+
+## `fit_gbm()`
+
+**Description:**  
+Fits a Geometric Brownian Motion (GBM) model to price data. GBM assumes asset prices follow a continuous-time stochastic process with constant drift and volatility.
+
+**Parameters:**
+- `prices`: A 1D array of price data.
+- `dt`: Time step (default is 1/252 for daily frequency).
+
+**Returns:**
+- `'mu'`: Drift term (expected return).
+- `'sigma'`: Volatility (standard deviation of returns).
+
+---
+
+## `fit_ou()`
+
+**Description:**  
+Fits an Ornstein-Uhlenbeck (OU) model to spread data. The OU process models mean-reverting behavior and is often used for interest rates or spreads.
+
+**Parameters:**
+- `spread`: A 1D array of spread data.
+- `dt`: Time step (default is 1/252).
+
+**Returns:**
+- `'theta'`: Mean reversion rate (annualized).
+- `'mu'`: Long-term mean level.
+- `'sigma'`: Volatility (annualized).
+- `'half_life'`: Time to revert halfway to the mean (in days).
+
+---
+
+## `fit_levy_ou()`
+
+**Description:**  
+Fits a Lévy Ornstein-Uhlenbeck (OU) process, also known as Jump Diffusion OU. Extends the OU model by including normally distributed jumps.
+
+**Parameters:**
+- `spread`: A 1D array of spread data.
+- `dt`: Time step (default is 1/252).
+
+**Returns:**
+- `'theta'`: Mean reversion rate (annualized).
+- `'mu'`: Long-term mean level.
+- `'sigma'`: Volatility (annualized).
+- `'half_life'`: Time to revert halfway to the mean (in days).
+- `'jump_lambda'`: Intensity of jumps (jump frequency).
+- `'jump_mu'`: Mean jump size.
+- `'jump_sigma'`: Standard deviation of jump size.
+
+---
+
+## `fit_ar1()`
+
+**Description:**  
+Fits an AR(1) (AutoRegressive of order 1) model to time series data. AR(1) assumes the current value is linearly dependent on the previous value plus noise.
+
+**Model Form:**
+\[ \text{series}[t] = \text{intercept} + \phi_1 \cdot \text{series}[t-1] + \epsilon_t \]
+
+**Parameters:**
+- `series`: A 1D array of time series data.
+
+**Returns:**
+- `'ar1_coefficient'`: Coefficient for the lag-1 term.
+- `'intercept'`: Intercept of the model.
+- `'sigma'`: Standard deviation of residuals.
+- `'mean'`: Long-term unconditional mean of the process.
+
+---
+
+These functions are intended to be used in modeling price dynamics, relative value spreads, volatility surfaces, and other applications requiring statistical characterization of time series behavior in financial contexts.
+
