@@ -87,7 +87,7 @@ def fit_levy_ou(spread, dt=1/252):
         Y = spread[1:]
         drift = X + (mu - X) * (1 - np.exp(-theta * dt))
         variance = sigma**2 * (1 - np.exp(-2 * theta * dt)) / (2 * theta)
-        jump_term = lam * dt * norm.pdf(Y - drift, loc=jump_mu, scale=np.sqrt(variance + jump_sigma ** 2))
+        jump_term = lam * dt * norm.pdf(Y - drift, loc=jump_mu, scale=np.sqrt(variance + jump_sigma**2))
         no_jump_term = (1 - lam * dt) * norm.pdf(Y, loc=drift, scale=np.sqrt(variance))
         likelihood = no_jump_term + jump_term
         return -np.sum(np.log(likelihood + 1e-10))
