@@ -80,23 +80,36 @@ def fit_levy_ou(spread, dt=1/252):
             - 'jump_mu': The mean of the jump size.
             - 'jump_sigma': The standard deviation of the jump size.
     """
+    import numpy as np
+    from scipy.stats import norm
+    from scipy.optimize import minimize
 
     def neg_log_likelihood(params):
         theta, mu, sigma, lam, jump_mu, jump_sigma = params
         X = spread[:-1]
         Y = spread[1:]
+        
         drift = X + (mu - X) * (1 - np.exp(-theta * dt))
+        
         variance = sigma**2 * (1 - np.exp(-2 * theta * dt)) / (2 * theta)
+        
         jump_term = lam * dt * norm.pdf(Y - drift, loc=jump_mu, scale=np.sqrt(variance + jump_sigma**2))
-        no_jump_term = (1 - lam * dt) * norm.pdf(Y, loc=drift, scale=np.sqrt(variance))
+        no_jump_term = (1 - lam * dt) * norm.pdf(Y - drift, loc=0, scale=np.sqrt(variance))
+        
         likelihood = no_jump_term + jump_term
+        
         return -np.sum(np.log(likelihood + 1e-10))
 
     init_params = [1.0, np.mean(spread), np.std(spread), 0.1, 0.0, 0.1]
-    bounds = [(1e-4, 10), (-np.inf, np.inf), (1e-4, np.inf), (1e-4, 1), (-np.inf, np.inf), (1e-4, np.inf)]
+    
+    bounds = [(1e-4, 10), (-np.inf, np.inf), (1e-4, np.inf), 
+              (1e-4, 1), (-np.inf, np.inf), (1e-4, np.inf)]
+    
     result = minimize(neg_log_likelihood, init_params, bounds=bounds)
     theta, mu, sigma, lam, jump_mu, jump_sigma = result.x
+    
     half_life = np.log(2)/theta/dt
+    
     return {
         "theta": theta / dt,
         "mu": mu,
