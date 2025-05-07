@@ -58,7 +58,7 @@ def fit_ou(spread, dt=1/252):
     return {"theta": theta / dt, "mu": mu, "sigma": sigma * np.sqrt(1 / dt), "half_life": half_life}
 
 
-def fit_levy_ou(spread, dt=1/252):
+def fit_levy_ou(spread, Jdetection=0.4, dt=1/252):
     """
     Fits a Lévy Ornstein-Uhlenbeck (OU) model, also known as Jump Diffusion OU, to the provided spread data.
     This model extends the standard OU process by adding jumps to account for sudden, large movements in the spread.
@@ -68,6 +68,7 @@ def fit_levy_ou(spread, dt=1/252):
 
     Parameters:
         spread (array-like): A 1D array of spread data (the variable being modeled).
+        Jdetection (float): The Bayesian jump detection threshold (default is 0.4)
         dt (float): The time step for the model (default is 1/252, representing daily data assuming 252 trading days in a year).
 
     Returns:
@@ -98,18 +99,34 @@ def fit_levy_ou(spread, dt=1/252):
             p_jump = norm.pdf(diffs[i], diffs[i], sigma_est)
             likelihood_ratio[i] = (prior_prob * p_jump) / ((1 - prior_prob) * p_no_jump + prior_prob * p_jump)
         
-        jump_indices = np.where(likelihood_ratio > threshold)[0] + 1  # +1 to match original data indices
-        jump_sizes = diffs[jump_indices-1]  # -1 to get back to diff indices
+        jump_indices = np.where(likelihood_ratio > threshold)[0] + 1
+        jump_sizes = diffs[jump_indices-1]
         
         return jump_indices, jump_sizes
     
-    jump_indices, jump_sizes = detect_jumps_bayesian(spread)
+    jump_indices, jump_sizes = detect_jumps_bayesian(spread, threshold=Jdetection)
     
     mask = np.ones(len(spread), dtype=bool)
     if len(jump_indices) > 0:
         mask[jump_indices] = False
+        
+        after_indices = jump_indices + 1
+        valid_after = after_indices[after_indices < len(mask)]
+        if len(valid_after) > 0:
+            mask[valid_after] = False
     
     clean_spread = spread[mask]
+    unconditional_std = np.std(clean_spread)
+    
+    if len(clean_spread) > 1:
+        lag1_autocorr = np.corrcoef(clean_spread[:-1], clean_spread[1:])[0, 1]
+        lag1_autocorr = max(min(lag1_autocorr, 0.99), 0.01)
+        theta_est = -np.log(lag1_autocorr) / dt
+        theta_est = min(max(theta_est, 0.1), 1 / dt) ## Bounded By 0.1 (Slow) and max number of days 1 / dt (Fast)
+    else:
+        theta_est = 1.0
+        
+    sigma_est = unconditional_std * np.sqrt(2 * theta_est)
     
     def neg_log_likelihood(params):
         theta, mu, sigma = params
@@ -120,13 +137,15 @@ def fit_levy_ou(spread, dt=1/252):
         
         variance = sigma**2 * (1 - np.exp(-2 * theta * dt)) / (2 * theta)
         
+        variance = np.maximum(variance, 1e-10)
+        
         return -np.sum(norm.logpdf(Y, drift, np.sqrt(variance)))
 
-    init_params = [1.0, np.mean(clean_spread), np.std(clean_spread)]
+    init_params = [theta_est, np.mean(clean_spread), sigma_est]
     
-    bounds = [(1e-4, 10), (-np.inf, np.inf), (1e-4, np.inf)]
+    bounds = [(1e-4, 5.0), (-np.inf, np.inf), (1e-4, 2.0 * sigma_est)]
     
-    result = minimize(neg_log_likelihood, init_params, bounds=bounds)
+    result = minimize(neg_log_likelihood, init_params, bounds=bounds, method='L-BFGS-B')
     theta, mu, sigma = result.x
     
     half_life = np.log(2)/theta/dt
@@ -136,9 +155,9 @@ def fit_levy_ou(spread, dt=1/252):
     jump_sigma = np.std(jump_sizes) if len(jump_sizes) > 1 else 0
     
     return {
-        "theta": theta / dt,
+        "theta": theta,
         "mu": mu,
-        "sigma": sigma * np.sqrt(1 / dt),
+        "sigma": sigma,
         "half_life": half_life,
         "jump_lambda": jump_lambda,
         "jump_mu": jump_mu,
