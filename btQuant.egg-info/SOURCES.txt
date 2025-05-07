@@ -3,7 +3,10 @@ README.md
 pyproject.toml
 setup.cfg
 btQuant/__init__.py
+btQuant/bootstrap.py
 btQuant/dimensionReduction.py
+btQuant/distributions.py
+btQuant/econometrics.py
 btQuant/factor.py
 btQuant/fit.py
 btQuant/ml.py

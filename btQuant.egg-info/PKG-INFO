@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: btQuant
-Version: 0.1.2
+Version: 0.1.3
 Summary: Boyko Terminal Quantitative Finance Python Package Companion.
 Author-email: Brayden Boyko <braydenboyko@boykowealth.com>
 License: GPL
@@ -13,7 +13,7 @@ Dynamic: license-file
 # Boyko Terminal Quant (btQuant)
 Boyko Terminal Quantitative Finance Python Package Companion. 
 
-[![Downloads](https://pepy.tech/badge/btQuant)](https://pepy.tech/project/btQuant)
+[![PyPI](https://img.shields.io/badge/PyPI-btQuant-blue)](https://pypi.org/project/btQuant/) [![Downloads](https://pepy.tech/badge/btQuant)](https://pepy.tech/project/btQuant)
 
 ## About The Boyko Terminal
 
