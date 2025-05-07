@@ -84,38 +84,63 @@ def fit_levy_ou(spread, dt=1/252):
     from scipy.stats import norm
     from scipy.optimize import minimize
 
+    def detect_jumps_bayesian(data, prior_prob=0.01, threshold=0.5):
+        """Detect jump points using Bayesian change-point detection"""
+        diffs = np.diff(data)
+        n = len(diffs)
+        
+        mad = np.median(np.abs(diffs - np.median(diffs)))
+        sigma_est = 1.4826 * mad
+        
+        likelihood_ratio = np.zeros(n)
+        for i in range(n):
+            p_no_jump = norm.pdf(diffs[i], 0, sigma_est)
+            p_jump = norm.pdf(diffs[i], diffs[i], sigma_est)
+            likelihood_ratio[i] = (prior_prob * p_jump) / ((1 - prior_prob) * p_no_jump + prior_prob * p_jump)
+        
+        jump_indices = np.where(likelihood_ratio > threshold)[0] + 1  # +1 to match original data indices
+        jump_sizes = diffs[jump_indices-1]  # -1 to get back to diff indices
+        
+        return jump_indices, jump_sizes
+    
+    jump_indices, jump_sizes = detect_jumps_bayesian(spread)
+    
+    mask = np.ones(len(spread), dtype=bool)
+    if len(jump_indices) > 0:
+        mask[jump_indices] = False
+    
+    clean_spread = spread[mask]
+    
     def neg_log_likelihood(params):
-        theta, mu, sigma, lam, jump_mu, jump_sigma = params
-        X = spread[:-1]
-        Y = spread[1:]
+        theta, mu, sigma = params
+        X = clean_spread[:-1]
+        Y = clean_spread[1:]
         
         drift = X + (mu - X) * (1 - np.exp(-theta * dt))
         
         variance = sigma**2 * (1 - np.exp(-2 * theta * dt)) / (2 * theta)
         
-        jump_term = lam * dt * norm.pdf(Y - drift, loc=jump_mu, scale=np.sqrt(variance + jump_sigma**2))
-        no_jump_term = (1 - lam * dt) * norm.pdf(Y - drift, loc=0, scale=np.sqrt(variance))
-        
-        likelihood = no_jump_term + jump_term
-        
-        return -np.sum(np.log(likelihood + 1e-10))
+        return -np.sum(norm.logpdf(Y, drift, np.sqrt(variance)))
 
-    init_params = [1.0, np.mean(spread), np.std(spread), 0.1, 0.0, 0.1]
+    init_params = [1.0, np.mean(clean_spread), np.std(clean_spread)]
     
-    bounds = [(1e-4, 10), (-np.inf, np.inf), (1e-4, np.inf), 
-              (1e-4, 1), (-np.inf, np.inf), (1e-4, np.inf)]
+    bounds = [(1e-4, 10), (-np.inf, np.inf), (1e-4, np.inf)]
     
     result = minimize(neg_log_likelihood, init_params, bounds=bounds)
-    theta, mu, sigma, lam, jump_mu, jump_sigma = result.x
+    theta, mu, sigma = result.x
     
     half_life = np.log(2)/theta/dt
+    
+    jump_lambda = len(jump_indices) / len(spread)
+    jump_mu = np.mean(jump_sizes) if len(jump_sizes) > 0 else 0
+    jump_sigma = np.std(jump_sizes) if len(jump_sizes) > 1 else 0
     
     return {
         "theta": theta / dt,
         "mu": mu,
         "sigma": sigma * np.sqrt(1 / dt),
         "half_life": half_life,
-        "jump_lambda": lam,
+        "jump_lambda": jump_lambda,
         "jump_mu": jump_mu,
         "jump_sigma": jump_sigma
     }
