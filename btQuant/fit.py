@@ -143,7 +143,7 @@ def fit_levy_ou(spread, Jdetection=0.4, dt=1/252):
 
     init_params = [theta_est, np.mean(clean_spread), sigma_est]
     
-    bounds = [(1e-4, 5.0), (-np.inf, np.inf), (1e-4, 2.0 * sigma_est)]
+    bounds = [(1e-4, 1 / dt), (-np.inf, np.inf), (1e-4, 2.0 * sigma_est)]
     
     result = minimize(neg_log_likelihood, init_params, bounds=bounds, method='L-BFGS-B')
     theta, mu, sigma = result.x
