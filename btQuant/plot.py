@@ -25,7 +25,7 @@ def plot_chart(
     width: int = 1820,
     height: int = 920,
     template: str = 'plotly_white',
-    regression_line: bool = False,  # New parameter for regression line
+    regression_line: bool = False,
     **kwargs
 ):
     """

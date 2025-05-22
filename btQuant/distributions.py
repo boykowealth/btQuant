@@ -1,7 +1,12 @@
 import numpy as np
 import scipy.stats as stats
+from scipy.optimize import minimize
+from scipy.special import gamma
+from scipy.stats import norm, multivariate_normal
+from scipy.optimize import root_scalar
 from typing import Tuple, Dict
 import warnings
+import plotly.graph_objects as go
 
 def identify(data: np.ndarray, 
              alpha: float = 0.05,
@@ -166,3 +171,306 @@ def identify(data: np.ndarray,
     else:
         return best_dist, {best_dist: results[best_dist]}
     
+def moments(data: np.ndarray) -> Dict[str, float]:
+    """
+    Estimate empirical moments of a dataset.
+
+    Parameters:
+    -----------
+    data : np.ndarray
+        1D array of data.
+
+    Returns:
+    --------
+    Dict[str, float]
+        Dictionary containing mean, variance, skewness, and kurtosis.
+    """
+    data = np.asarray(data).flatten()
+
+    return {
+        'mean': np.mean(data),
+        'variance': np.var(data),
+        'skewness': stats.skew(data),
+        'kurtosis': stats.kurtosis(data)
+    }
+
+def qq_plot(data: np.ndarray, dist_name: str):
+    """
+    Generate an interactive Q-Q plot using Plotly to visually assess fit to a specified distribution.
+
+    Parameters:
+    -----------
+    data : np.ndarray
+        1D array of data.
+    
+    dist_name : str
+        Name of the distribution to compare to (must be in scipy.stats).
+    """
+    data = np.asarray(data).flatten()
+    
+    try:
+        dist = getattr(stats, dist_name)
+        params = dist.fit(data)
+
+        sorted_data = np.sort(data)
+        n = len(sorted_data)
+        
+        probs = (np.arange(1, n + 1) - 0.5) / n
+        theoretical_quants = dist.ppf(probs, *params)
+
+        min_val = min(np.min(theoretical_quants), np.min(sorted_data))
+        max_val = max(np.max(theoretical_quants), np.max(sorted_data))
+
+        fig = go.Figure()
+
+        fig.add_trace(go.Scatter(
+            x=theoretical_quants,
+            y=sorted_data,
+            mode='markers',
+            name='Quantiles',
+            marker=dict(color='blue', size=6)
+        ))
+
+        fig.add_trace(go.Scatter(
+            x=[min_val, max_val],
+            y=[min_val, max_val],
+            mode='lines',
+            name='45° Reference Line',
+            line=dict(color='red', dash='dash')
+        ))
+
+        fig.update_layout(
+            title=f"Q-Q Plot: Data vs {dist_name}",
+            xaxis_title="Theoretical Quantiles",
+            yaxis_title="Empirical Quantiles",
+            template="plotly_white",
+            showlegend=True
+        )
+
+        fig.show()
+
+    except Exception as e:
+        print(f"Error generating Q-Q plot for {dist_name}: {e}")
+
+def pp_plot(data: np.ndarray, dist_name: str):
+    """
+    Generate an interactive P-P plot using Plotly to visually assess how well a distribution fits the data.
+
+    Parameters:
+    -----------
+    data : np.ndarray
+        1D array of data.
+
+    dist_name : str
+        Name of the distribution to compare to (must exist in scipy.stats).
+    """
+    data = np.asarray(data).flatten()
+
+    try:
+        dist = getattr(stats, dist_name)
+        params = dist.fit(data)
+
+        sorted_data = np.sort(data)
+        n = len(sorted_data)
+
+        empirical_probs = np.arange(1, n + 1) / (n + 1)
+        theoretical_probs = dist.cdf(sorted_data, *params)
+
+        fig = go.Figure()
+
+        fig.add_trace(go.Scatter(
+            x=theoretical_probs,
+            y=empirical_probs,
+            mode='markers',
+            name='P-P Points',
+            marker=dict(color='green', size=6)
+        ))
+
+        fig.add_trace(go.Scatter(
+            x=[0, 1],
+            y=[0, 1],
+            mode='lines',
+            name='45° Reference Line',
+            line=dict(color='red', dash='dash')
+        ))
+
+        fig.update_layout(
+            title=f"P-P Plot: Data vs {dist_name}",
+            xaxis_title="Theoretical CDF",
+            yaxis_title="Empirical CDF",
+            template="plotly_white",
+            showlegend=True
+        )
+
+        fig.show()
+
+    except Exception as e:
+        print(f"Error generating P-P plot for {dist_name}: {e}")
+
+def goodness_of_fit_tests(data: np.ndarray) -> Dict[str, Dict[str, float]]:
+    """
+    Perform additional goodness-of-fit tests on the data.
+
+    Tests included:
+    - Shapiro-Wilk
+    - Jarque-Bera
+    - D'Agostino's K²
+
+    Parameters:
+    -----------
+    data : np.ndarray
+        1D array of data to test for normality.
+
+    Returns:
+    --------
+    results : dict
+        Dictionary with test statistics and p-values.
+    """
+    data = np.asarray(data).flatten()
+    results = {}
+
+    ## Shapiro-Wilk Test
+    try:
+        stat, pval = stats.shapiro(data)
+        results['Shapiro-Wilk'] = {'statistic': stat, 'p_value': pval}
+    except Exception as e:
+        results['Shapiro-Wilk'] = {'error': str(e)}
+
+    ## Jarque-Bera Test
+    try:
+        stat, pval = stats.jarque_bera(data)
+        results['Jarque-Bera'] = {'statistic': stat, 'p_value': pval}
+    except Exception as e:
+        results['Jarque-Bera'] = {'error': str(e)}
+
+    ## D’Agostino’s K² Test
+    try:
+        stat, pval = stats.normaltest(data)
+        results["D'Agostino K²"] = {'statistic': stat, 'p_value': pval}
+    except Exception as e:
+        results["D'Agostino K²"] = {'error': str(e)}
+
+    return results
+
+
+def block_maxima_fit(data: np.ndarray, block_size: int = 50) -> Dict[str, object]:
+    """
+    Fit a Generalized Extreme Value (GEV) distribution using the Block Maxima method,
+    using pure NumPy and manual MLE optimization.
+
+    Parameters:
+    -----------
+    data : np.ndarray
+        1D array of observations (e.g., returns, prices).
+    block_size : int, default=50
+        Number of observations per block to extract maxima from.
+
+    Returns:
+    --------
+    results : dict
+        Dictionary containing GEV parameters, log-likelihood, AIC, and BIC.
+    """
+
+    def gev_log_likelihood(params, data):
+        c, loc, scale = params
+        if scale <= 0:
+            return np.inf
+        z = (data - loc) / scale
+        if c == 0:
+            logpdf = -z - np.exp(-z) - np.log(scale)
+        else:
+            t = 1 + c * z
+            if np.any(t <= 0):
+                return np.inf
+            logpdf = -((1 + 1/c) * np.log(t)) - t**(-1/c) - np.log(scale)
+        return -np.sum(logpdf)
+    
+    data = np.asarray(data).flatten()
+    n_blocks = len(data) // block_size
+
+    if n_blocks < 2:
+        raise ValueError("Not enough data to form multiple blocks. Increase data size or reduce block_size.")
+
+    blocks = data[:n_blocks * block_size].reshape(n_blocks, block_size)
+    block_maxima = blocks.max(axis=1)
+
+    loc_init = np.mean(block_maxima)
+    scale_init = np.std(block_maxima)
+    shape_init = 0.1
+
+    bounds = [(-1, 1), (None, None), (1e-5, None)]  # Shape, loc, scale bounds
+    result = minimize(gev_log_likelihood, x0=[shape_init, loc_init, scale_init],
+                      args=(block_maxima,), bounds=bounds)
+
+    if not result.success:
+        raise RuntimeError("GEV parameter estimation failed: " + result.message)
+
+    c, loc, scale = result.x
+    loglik = -result.fun
+    k = 3
+    n = len(block_maxima)
+    aic = 2 * k - 2 * loglik
+    bic = k * np.log(n) - 2 * loglik
+
+    return {
+        'params': {'shape': c, 'loc': loc, 'scale': scale},
+        'log_likelihood': loglik,
+        'aic': aic,
+        'bic': bic,
+        'n_blocks': n_blocks,
+        'block_maxima': block_maxima
+    }
+
+def kl_divergence(p: np.ndarray, q: np.ndarray) -> float:
+    """
+    Calculate the Kullback-Leibler divergence D_KL(p || q) between two discrete probability distributions.
+
+    Parameters:
+    -----------
+    p : np.ndarray
+        First probability distribution (true distribution).
+    q : np.ndarray
+        Second probability distribution (approximate distribution).
+
+    Returns:
+    --------
+    float
+        KL divergence value. Returns np.inf if q has zero probability where p > 0.
+    """
+    p = np.asarray(p, dtype=np.float64)
+    q = np.asarray(q, dtype=np.float64)
+
+    p = p / np.sum(p)
+    q = q / np.sum(q)
+
+    epsilon = 1e-12
+    p = np.clip(p, epsilon, 1)
+    q = np.clip(q, epsilon, 1)
+
+    return np.sum(p * np.log(p / q))
+
+def js_divergence(p: np.ndarray, q: np.ndarray) -> float:
+    """
+    Calculate the Jensen-Shannon divergence between two discrete probability distributions.
+
+    Parameters:
+    -----------
+    p : np.ndarray
+        First probability distribution.
+    q : np.ndarray
+        Second probability distribution.
+
+    Returns:
+    --------
+    float
+        Jensen-Shannon divergence (symmetric, bounded between 0 and 1).
+    """
+    p = np.asarray(p, dtype=np.float64)
+    q = np.asarray(q, dtype=np.float64)
+
+    p = p / np.sum(p)
+    q = q / np.sum(q)
+
+    m = 0.5 * (p + q)
+
+    return 0.5 * (kl_divergence(p, m) + kl_divergence(q, m))

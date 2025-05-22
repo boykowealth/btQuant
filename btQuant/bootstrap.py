@@ -177,7 +177,7 @@ def surface(x, y, z, method='linear', grid_size=(100, 100)):
 
     return df
 
-def RbfSurface(x, y, z, grid_size=(100, 100)):
+def rbfSurface(x, y, z, grid_size=(100, 100)):
     """
     Bootstrap a correlation surface using Radial Basis Function (RBF) interpolation.
 
