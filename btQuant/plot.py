@@ -51,35 +51,35 @@ def plot_chart(
     color_discrete_sequence = boyko_palette
 
     if chart_type == 'line':
-        fig = px.line(data, x=x, y=y, title=title, color=color,
+        fig = px.line(data, x=x, y=y, color=color,
                       template=template, color_discrete_sequence=color_discrete_sequence, **kwargs)
 
     elif chart_type == 'bar':
-        fig = px.bar(data, x=x, y=y[0], title=title, color=color,
+        fig = px.bar(data, x=x, y=y[0], color=color,
                      template=template, color_discrete_sequence=color_discrete_sequence, **kwargs)
 
     elif chart_type == 'area':
-        fig = px.area(data, x=x, y=y, title=title, color=color,
+        fig = px.area(data, x=x, y=y, color=color,
                       template=template, color_discrete_sequence=color_discrete_sequence, **kwargs)
 
     elif chart_type == 'scatter':
-        fig = px.scatter(data, x=x, y=y[0], title=title, color=color,
+        fig = px.scatter(data, x=x, y=y[0], color=color,
                          template=template, color_discrete_sequence=color_discrete_sequence, **kwargs)
         if regression_line:
             fig.update_traces(mode='markers+lines', line=dict(color="red", width=2))
 
     elif chart_type == 'hist':
-        fig = px.histogram(data, x=y[0], title=title, color=color,
+        fig = px.histogram(data, x=y[0], color=color,
                            template=template, color_discrete_sequence=color_discrete_sequence, **kwargs)
 
     elif chart_type == 'box':
         fig = px.box(data, y=y[0], x=color if color else None,
-                     title=title, template=template,
+                     template=template,
                      color_discrete_sequence=color_discrete_sequence, **kwargs)
 
     elif chart_type == 'violin':
         fig = px.violin(data, y=y[0], x=color if color else None,
-                        box=True, points='all', title=title,
+                        box=True, points='all',
                         template=template, color_discrete_sequence=color_discrete_sequence, **kwargs)
 
     elif chart_type == 'heatmap':
@@ -87,14 +87,14 @@ def plot_chart(
             raise ValueError("Heatmap requires at least two columns for correlation.")
         corr = data[y].corr()
         fig = px.imshow(corr, text_auto=True, color_continuous_scale='Blues',
-                        title=title, template=template)
+                        template=template)
 
     elif chart_type == '3dscatter':
-        fig = px.scatter_3d(data, x=x, y=y[0], z=y[1], title=title,
+        fig = px.scatter_3d(data, x=x, y=y[0], z=y[1],
                             template=template, color=color, color_discrete_sequence=color_discrete_sequence, **kwargs)
 
     elif chart_type == '3dline':
-        fig = px.line_3d(data, x=x, y=y[0], z=y[1], title=title,
+        fig = px.line_3d(data, x=x, y=y[0], z=y[1],
                          template=template, color=color, color_discrete_sequence=color_discrete_sequence, **kwargs)
 
     elif chart_type == '3dsurface':
@@ -108,7 +108,6 @@ def plot_chart(
         fig = go.Figure(data=[go.Surface(z=Z, x=X, y=Y, colorscale='Blues')])
 
         fig.update_layout(
-            title=title,
             scene=dict(
                 xaxis_title=xlabel,
                 yaxis_title=ylabel,
@@ -121,41 +120,91 @@ def plot_chart(
     else:
         raise ValueError(f"Unsupported chart_type: {chart_type}")
 
-    fig.update_xaxes(showline=True, linewidth=2, linecolor='black', mirror=True)
-    fig.update_yaxes(showline=True, linewidth=2, linecolor='black', mirror=True)
+    fig.update_xaxes(
+        showline=True, 
+        linewidth=1.5, 
+        linecolor='#333333', 
+        mirror=False,
+        showgrid=True,
+        gridwidth=0.5,
+        gridcolor='#E0E0E0',
+        tickfont=dict(size=12, color='#333333'),
+        title_font=dict(size=14, color='#333333')
+    )
+    
+    fig.update_yaxes(
+        showline=True, 
+        linewidth=1.5, 
+        linecolor='#333333', 
+        mirror=False,
+        showgrid=True,
+        gridwidth=0.5,
+        gridcolor='#E0E0E0',
+        tickfont=dict(size=12, color='#333333'),
+        title_font=dict(size=14, color='#333333')
+    )
+    
     if chart_type in ['3dscatter', '3dline', '3dsurface']:
         fig.update_layout(scene=dict(
-            xaxis=dict(showline=True, linewidth=2, linecolor='black'),
-            yaxis=dict(showline=True, linewidth=2, linecolor='black'),
-            zaxis=dict(showline=True, linewidth=2, linecolor='black')
+            xaxis=dict(showline=True, linewidth=1.5, linecolor='#333333'),
+            yaxis=dict(showline=True, linewidth=1.5, linecolor='#333333'),
+            zaxis=dict(showline=True, linewidth=1.5, linecolor='#333333')
         ))
 
-    fig.add_annotation(
-        text="btQuant by: Boyko Wealth",
-        xref="paper", yref="paper",
-        x=1, y=-0.12, showarrow=False,
-        font=dict(size=12, color="gray"),
-        xanchor='right'
-    )
+    if title:
+        fig.add_annotation(
+            text=title,
+            xref="paper", yref="paper",
+            x=0, y=-0.05, showarrow=False,
+            font=dict(size=11, color="#666666"),
+            xanchor='left',
+            yanchor='top'
+        )
 
-    fig.update_traces(
-        opacity=0.8,
-        hoverinfo='x+y+text'
-    )
+    if chart_type in ['line', 'area']:
+        fig.update_traces(
+            opacity=0.85,
+            hoverinfo='x+y+text',
+            line=dict(width=2.5)
+        )
+    elif chart_type == 'scatter':
+        fig.update_traces(
+            opacity=0.85,
+            hoverinfo='x+y+text',
+            marker=dict(size=6, line=dict(width=0.5, color='white'))
+        )
+    elif chart_type == 'bar':
+        fig.update_traces(
+            opacity=0.85,
+            hoverinfo='x+y+text',
+            marker=dict(line=dict(width=0.5, color='white'))
+        )
+    else:
+        fig.update_traces(
+            opacity=0.85,
+            hoverinfo='x+y+text'
+        )
 
     fig.update_layout(
         width=width,
         height=height,
         xaxis_title=xlabel or x,
         yaxis_title=ylabel or (y[0] if isinstance(y, list) else y),
-        title=dict(
-            text=title,
-            font=dict(size=26, color="black"),
-            x=0.01,
-            xanchor="left"
-        ),
-        margin=dict(t=80, b=100),
-        font=dict(family="Arial", size=14, color="black"),
+        margin=dict(t=20, b=30, l=40, r=20),  # Much smaller margins
+        font=dict(family="Inter, Arial, sans-serif", size=12, color="#333333"),
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        showlegend=True if color else False,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1,
+            font=dict(size=11)
+        ) if color else {}
     )
+    
+    fig.update_layout(title=None)
 
     fig.show()

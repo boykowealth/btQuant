@@ -18,4 +18,5 @@ btQuant/sim.py
 btQuant.egg-info/PKG-INFO
 btQuant.egg-info/SOURCES.txt
 btQuant.egg-info/dependency_links.txt
+btQuant.egg-info/requires.txt
 btQuant.egg-info/top_level.txt
