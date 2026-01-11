@@ -1,338 +1,491 @@
 import numpy as np
 
-def regression_tree(X, y, max_depth=5):
+def regressionTree(X, y, maxDepth=5):
     """
-    A simple Regression Tree implementation.
+    Regression tree using MSE splits.
     
     Parameters:
-        X (array-like): The input data (features).
-        y (array-like): The target values.
-        max_depth (int): The maximum depth of the tree.
+        X: features (n_samples, n_features)
+        y: target values
+        maxDepth: maximum tree depth
     
     Returns:
-        dict: The regression tree.
+        dict: tree structure
     """
-    def mean_squared_error(y):
+    def mse(y):
         return np.mean((y - np.mean(y))**2)
     
-    def build_tree(X, y, depth):
-        if depth == max_depth or len(np.unique(y)) == 1:
+    def buildTree(X, y, depth):
+        if depth == maxDepth or len(np.unique(y)) == 1 or len(y) < 2:
             return np.mean(y)
         
-        best_mse = float('inf')
-        best_split = None
-        best_left_y = None
-        best_right_y = None
-        best_left_X = None
-        best_right_X = None
-        best_feature = None
-        best_value = None
+        bestMse = float('inf')
+        bestSplit = None
+        bestLeftX, bestRightX = None, None
+        bestLeftY, bestRightY = None, None
         
-        n_features = X.shape[1]
-        for feature in range(n_features):
-            unique_values = np.unique(X[:, feature])
-            for value in unique_values:
-                left_mask = X[:, feature] <= value
-                right_mask = ~left_mask
-                left_X = X[left_mask]
-                right_X = X[right_mask]
-                left_y = y[left_mask]
-                right_y = y[right_mask]
+        nFeatures = X.shape[1]
+        for feature in range(nFeatures):
+            uniqueVals = np.unique(X[:, feature])
+            for value in uniqueVals:
+                leftMask = X[:, feature] <= value
+                rightMask = ~leftMask
                 
-                mse = (mean_squared_error(left_y) * len(left_y) + 
-                       mean_squared_error(right_y) * len(right_y)) / len(y)
+                if np.sum(leftMask) == 0 or np.sum(rightMask) == 0:
+                    continue
                 
-                if mse < best_mse:
-                    best_mse = mse
-                    best_split = (feature, value)
-                    best_left_X = left_X
-                    best_right_X = right_X
-                    best_left_y = left_y
-                    best_right_y = right_y
+                leftX, rightX = X[leftMask], X[rightMask]
+                leftY, rightY = y[leftMask], y[rightMask]
+                
+                splitMse = (mse(leftY) * len(leftY) + mse(rightY) * len(rightY)) / len(y)
+                
+                if splitMse < bestMse:
+                    bestMse = splitMse
+                    bestSplit = (feature, value)
+                    bestLeftX, bestRightX = leftX, rightX
+                    bestLeftY, bestRightY = leftY, rightY
         
-        feature, value = best_split
-        left_tree = build_tree(best_left_X, best_left_y, depth + 1)
-        right_tree = build_tree(best_right_X, best_right_y, depth + 1)
+        if bestSplit is None:
+            return np.mean(y)
         
-        return {'feature': feature, 'value': value, 'left': left_tree, 'right': right_tree}
+        feature, value = bestSplit
+        leftTree = buildTree(bestLeftX, bestLeftY, depth + 1)
+        rightTree = buildTree(bestRightX, bestRightY, depth + 1)
+        
+        return {'feature': feature, 'value': value, 'left': leftTree, 'right': rightTree}
     
-    return build_tree(X, y, 0)
+    return buildTree(X, y, 0)
 
-def isolation_forest(X, n_trees=100, max_samples=None, max_depth=10):
+def predictTree(tree, X):
     """
-    A simple Isolation Forest implementation.
+    Predict using a regression or decision tree.
     
     Parameters:
-        X (array-like): The input data (features).
-        n_trees (int): Number of isolation trees to build.
-        max_samples (int): Number of samples to use for each tree (optional).
-        max_depth (int): Maximum depth of the tree.
+        tree: tree structure from regressionTree or decisionTree
+        X: features to predict (n_samples, n_features)
     
     Returns:
-        list: The isolation trees.
+        predictions array
     """
-    def build_isolation_tree(X, depth):
-        if depth >= max_depth or len(np.unique(X, axis=0)) == 1:
-            return np.mean(X, axis=0)
+    def predictSingle(tree, x):
+        while isinstance(tree, dict):
+            if x[tree['feature']] <= tree['value']:
+                tree = tree['left']
+            else:
+                tree = tree['right']
+        return tree
+    
+    return np.array([predictSingle(tree, x) for x in X])
+
+def isolationForest(X, nTrees=100, maxSamples=None, maxDepth=10):
+    """
+    Isolation forest for anomaly detection.
+    
+    Parameters:
+        X: features (n_samples, n_features)
+        nTrees: number of trees
+        maxSamples: samples per tree (default all)
+        maxDepth: maximum tree depth
+    
+    Returns:
+        list of isolation trees
+    """
+    def buildTree(X, depth):
+        if depth >= maxDepth or len(X) <= 1:
+            return {'size': len(X)}
         
         feature = np.random.randint(0, X.shape[1])
-        min_value, max_value = X[:, feature].min(), X[:, feature].max()
-        split_value = np.random.uniform(min_value, max_value)
+        minVal, maxVal = X[:, feature].min(), X[:, feature].max()
         
-        left_mask = X[:, feature] <= split_value
-        right_mask = ~left_mask
+        if minVal == maxVal:
+            return {'size': len(X)}
         
-        left_tree = build_isolation_tree(X[left_mask], depth + 1)
-        right_tree = build_isolation_tree(X[right_mask], depth + 1)
+        splitVal = np.random.uniform(minVal, maxVal)
         
-        return {'feature': feature, 'value': split_value, 'left': left_tree, 'right': right_tree}
-
+        leftMask = X[:, feature] <= splitVal
+        rightMask = ~leftMask
+        
+        if np.sum(leftMask) == 0 or np.sum(rightMask) == 0:
+            return {'size': len(X)}
+        
+        leftTree = buildTree(X[leftMask], depth + 1)
+        rightTree = buildTree(X[rightMask], depth + 1)
+        
+        return {'feature': feature, 'value': splitVal, 'left': leftTree, 'right': rightTree}
+    
     trees = []
-    n_samples = X.shape[0]
-    if max_samples is None:
-        max_samples = n_samples
-    for _ in range(n_trees):
-        sampled_indices = np.random.choice(n_samples, max_samples, replace=False)
-        sampled_X = X[sampled_indices]
-        tree = build_isolation_tree(sampled_X, 0)
+    nSamples = X.shape[0]
+    if maxSamples is None:
+        maxSamples = min(256, nSamples)
+    
+    for _ in range(nTrees):
+        indices = np.random.choice(nSamples, min(maxSamples, nSamples), replace=False)
+        tree = buildTree(X[indices], 0)
         trees.append(tree)
     
     return trees
 
-def kmeans(X, k=3, max_iters=100):
+def anomalyScore(trees, X):
     """
-    A simple K-Means Clustering implementation.
+    Compute anomaly scores from isolation forest.
     
     Parameters:
-        X (array-like): The input data (features).
-        k (int): The number of clusters.
-        max_iters (int): Maximum number of iterations.
+        trees: list of isolation trees
+        X: features to score
     
     Returns:
-        tuple: (centroids, labels) - centroids of clusters and the labels assigned to each data point.
+        anomaly scores (higher = more anomalous)
     """
-    n_samples, n_features = X.shape
-    centroids = X[np.random.choice(n_samples, k, replace=False)]
+    def pathLength(tree, x, currentDepth=0):
+        if not isinstance(tree, dict) or 'size' in tree:
+            size = tree.get('size', 1)
+            if size <= 1:
+                return currentDepth
+            c = 2 * (np.log(size - 1) + 0.5772156649) - 2 * (size - 1) / size
+            return currentDepth + c
+        
+        if x[tree['feature']] <= tree['value']:
+            return pathLength(tree['left'], x, currentDepth + 1)
+        else:
+            return pathLength(tree['right'], x, currentDepth + 1)
     
-    for _ in range(max_iters):
+    n = len(trees[0]) if isinstance(trees[0], dict) else 256
+    c = 2 * (np.log(n - 1) + 0.5772156649) - 2 * (n - 1) / n
+    
+    scores = []
+    for x in X:
+        avgPath = np.mean([pathLength(tree, x) for tree in trees])
+        score = 2 ** (-avgPath / c)
+        scores.append(score)
+    
+    return np.array(scores)
+
+def kmeans(X, k=3, maxIters=100, tol=1e-4):
+    """
+    K-means clustering.
+    
+    Parameters:
+        X: features (n_samples, n_features)
+        k: number of clusters
+        maxIters: maximum iterations
+        tol: convergence tolerance
+    
+    Returns:
+        centroids, labels
+    """
+    nSamples = X.shape[0]
+    centroids = X[np.random.choice(nSamples, k, replace=False)]
+    
+    for iteration in range(maxIters):
         distances = np.linalg.norm(X[:, np.newaxis] - centroids, axis=2)
         labels = np.argmin(distances, axis=1)
         
-        new_centroids = np.array([X[labels == i].mean(axis=0) for i in range(k)])
+        newCentroids = np.array([X[labels == i].mean(axis=0) if np.sum(labels == i) > 0 
+                                 else centroids[i] for i in range(k)])
         
-        if np.all(centroids == new_centroids):
+        if np.linalg.norm(centroids - newCentroids) < tol:
             break
         
-        centroids = new_centroids
+        centroids = newCentroids
     
     return centroids, labels
 
-
-def knn(X_train, y_train, X_test, k=3):
+def knn(XTrain, yTrain, XTest, k=3):
     """
-    A simple K-Nearest Neighbors (KNN) implementation.
+    K-nearest neighbors classifier.
     
     Parameters:
-        X_train (array-like): The training data (features).
-        y_train (array-like): The training labels.
-        X_test (array-like): The test data (features).
-        k (int): The number of nearest neighbors to consider.
+        XTrain: training features
+        yTrain: training labels
+        XTest: test features
+        k: number of neighbors
     
     Returns:
-        array: Predicted labels for the test data.
+        predicted labels
     """
-    def euclidean_distance(x1, x2):
-        return np.sqrt(np.sum((x1 - x2) ** 2))
-    
     predictions = []
     
-    for test_point in X_test:
-        distances = [euclidean_distance(test_point, train_point) for train_point in X_train]
-        sorted_indices = np.argsort(distances)
-        nearest_neighbors = y_train[sorted_indices[:k]]
-        most_common = np.bincount(nearest_neighbors).argmax()
-        predictions.append(most_common)
+    for testPoint in XTest:
+        distances = np.sqrt(np.sum((XTrain - testPoint)**2, axis=1))
+        sortedIndices = np.argsort(distances)
+        nearestNeighbors = yTrain[sortedIndices[:k]]
+        mostCommon = np.bincount(nearestNeighbors.astype(int)).argmax()
+        predictions.append(mostCommon)
     
     return np.array(predictions)
 
-def gaussian_naive_bayes(X_train, y_train, X_test):
+def naiveBayes(XTrain, yTrain, XTest):
     """
-    A simple Gaussian Naive Bayes classifier.
+    Gaussian naive Bayes classifier.
     
     Parameters:
-        X_train (array-like): The training data (features).
-        y_train (array-like): The training labels.
-        X_test (array-like): The test data (features).
+        XTrain: training features
+        yTrain: training labels
+        XTest: test features
     
     Returns:
-        array: Predicted labels for the test data.
+        predicted labels
     """
-    def gaussian_pdf(x, mean, std):
-        return (1 / (std * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - mean) / std) ** 2)
+    def gaussianPdf(x, mean, std):
+        eps = 1e-10
+        return (1 / (std + eps) / np.sqrt(2 * np.pi)) * np.exp(-0.5 * ((x - mean) / (std + eps))**2)
     
-    classes = np.unique(y_train)
-    mean_std = {cls: {'mean': np.mean(X_train[y_train == cls], axis=0), 
-                      'std': np.std(X_train[y_train == cls], axis=0)} for cls in classes}
+    classes = np.unique(yTrain)
+    meanStd = {}
+    
+    for cls in classes:
+        XCls = XTrain[yTrain == cls]
+        meanStd[cls] = {
+            'mean': np.mean(XCls, axis=0),
+            'std': np.std(XCls, axis=0) + 1e-10
+        }
     
     predictions = []
     
-    for test_point in X_test:
-        class_probabilities = {}
+    for testPoint in XTest:
+        classProbs = {}
         
         for cls in classes:
-            likelihood = np.prod(gaussian_pdf(test_point, mean_std[cls]['mean'], mean_std[cls]['std']))
-            class_probabilities[cls] = likelihood
+            likelihood = np.prod(gaussianPdf(testPoint, meanStd[cls]['mean'], meanStd[cls]['std']))
+            classProbs[cls] = likelihood
         
-        predicted_class = max(class_probabilities, key=class_probabilities.get)
-        predictions.append(predicted_class)
+        predictedClass = max(classProbs, key=classProbs.get)
+        predictions.append(predictedClass)
     
     return np.array(predictions)
 
-def decision_tree(X, y, max_depth=5):
+def decisionTree(X, y, maxDepth=5):
     """
-    A simple Decision Tree classifier.
+    Decision tree classifier using Gini impurity.
     
     Parameters:
-        X (array-like): The input data (features).
-        y (array-like): The target labels.
-        max_depth (int): The maximum depth of the tree.
+        X: features (n_samples, n_features)
+        y: target labels
+        maxDepth: maximum tree depth
     
     Returns:
-        dict: The decision tree.
+        dict: tree structure
     """
-    def gini_impurity(y):
+    def giniImpurity(y):
+        if len(y) == 0:
+            return 0
         _, counts = np.unique(y, return_counts=True)
         probs = counts / len(y)
-        return 1 - np.sum(probs ** 2)
+        return 1 - np.sum(probs**2)
     
-    def best_split(X, y):
-        best_gini = float('inf')
-        best_split = None
-        best_left_y, best_right_y = None, None
-        best_left_X, best_right_X = None, None
+    def bestSplit(X, y):
+        bestGini = float('inf')
+        bestSplit = None
+        bestLeftX, bestRightX = None, None
+        bestLeftY, bestRightY = None, None
         
         for feature in range(X.shape[1]):
-            unique_values = np.unique(X[:, feature])
-            for value in unique_values:
-                left_mask = X[:, feature] <= value
-                right_mask = ~left_mask
-                left_y, right_y = y[left_mask], y[right_mask]
+            uniqueVals = np.unique(X[:, feature])
+            for value in uniqueVals:
+                leftMask = X[:, feature] <= value
+                rightMask = ~leftMask
                 
-                gini = (len(left_y) * gini_impurity(left_y) + len(right_y) * gini_impurity(right_y)) / len(y)
+                if np.sum(leftMask) == 0 or np.sum(rightMask) == 0:
+                    continue
                 
-                if gini < best_gini:
-                    best_gini = gini
-                    best_split = (feature, value)
-                    best_left_X, best_right_X = X[left_mask], X[right_mask]
-                    best_left_y, best_right_y = left_y, right_y
+                leftY, rightY = y[leftMask], y[rightMask]
+                
+                gini = (len(leftY) * giniImpurity(leftY) + 
+                       len(rightY) * giniImpurity(rightY)) / len(y)
+                
+                if gini < bestGini:
+                    bestGini = gini
+                    bestSplit = (feature, value)
+                    bestLeftX, bestRightX = X[leftMask], X[rightMask]
+                    bestLeftY, bestRightY = leftY, rightY
         
-        return best_split, best_left_X, best_right_X, best_left_y, best_right_y
+        return bestSplit, bestLeftX, bestRightX, bestLeftY, bestRightY
     
-    def build_tree(X, y, depth):
-        if depth == max_depth or len(np.unique(y)) == 1:
-            return np.bincount(y).argmax()
+    def buildTree(X, y, depth):
+        if depth == maxDepth or len(np.unique(y)) == 1 or len(y) < 2:
+            return int(np.bincount(y.astype(int)).argmax())
         
-        split, left_X, right_X, left_y, right_y = best_split(X, y)
+        split, leftX, rightX, leftY, rightY = bestSplit(X, y)
+        
+        if split is None:
+            return int(np.bincount(y.astype(int)).argmax())
+        
         feature, value = split
         
-        left_tree = build_tree(left_X, left_y, depth + 1)
-        right_tree = build_tree(right_X, right_y, depth + 1)
+        leftTree = buildTree(leftX, leftY, depth + 1)
+        rightTree = buildTree(rightX, rightY, depth + 1)
         
-        return {'feature': feature, 'value': value, 'left': left_tree, 'right': right_tree}
+        return {'feature': feature, 'value': value, 'left': leftTree, 'right': rightTree}
     
-    return build_tree(X, y, 0)
+    return buildTree(X, y, 0)
 
-def random_forest(X, y, n_estimators=10, max_depth=5, sample_ratio=0.8):
-    def regression_tree(X, y, depth):
-        if depth == 0 or len(set(y)) == 1:
-            return np.mean(y)
-        best_feature, best_value, best_loss = None, None, float('inf')
-        for feature in range(X.shape[1]):
-            values = np.unique(X[:, feature])
-            for val in values:
-                left = y[X[:, feature] <= val]
-                right = y[X[:, feature] > val]
-                if len(left) == 0 or len(right) == 0:
-                    continue
-                loss = np.var(left)*len(left) + np.var(right)*len(right)
-                if loss < best_loss:
-                    best_feature, best_value, best_loss = feature, val, loss
-        if best_feature is None:
-            return np.mean(y)
-        left_tree = regression_tree(X[X[:, best_feature] <= best_value],
-                                    y[X[:, best_feature] <= best_value], depth - 1)
-        right_tree = regression_tree(X[X[:, best_feature] > best_value],
-                                     y[X[:, best_feature] > best_value], depth - 1)
-        return {'feature': best_feature, 'value': best_value, 'left': left_tree, 'right': right_tree}
-
-    def predict_tree(tree, x):
-        while isinstance(tree, dict):
-            if x[tree['feature']] <= tree['value']:
-                tree = tree['left']
-            else:
-                tree = tree['right']
-        return tree
-
+def randomForest(X, y, nEstimators=10, maxDepth=5, sampleRatio=0.8):
+    """
+    Random forest regressor.
+    
+    Parameters:
+        X: features
+        y: target values
+        nEstimators: number of trees
+        maxDepth: maximum tree depth
+        sampleRatio: fraction of samples per tree
+    
+    Returns:
+        predict function
+    """
     trees = []
-    for _ in range(n_estimators):
-        idx = np.random.choice(len(X), int(len(X) * sample_ratio), replace=True)
-        X_sample, y_sample = X[idx], y[idx]
-        tree = regression_tree(X_sample, y_sample, max_depth)
+    
+    for _ in range(nEstimators):
+        idx = np.random.choice(len(X), int(len(X) * sampleRatio), replace=True)
+        tree = regressionTree(X[idx], y[idx], maxDepth=maxDepth)
         trees.append(tree)
-
-    def predict(X_new):
-        preds = np.array([[predict_tree(tree, x) for tree in trees] for x in X_new])
-        return preds.mean(axis=1)
-
+    
+    def predict(XNew):
+        preds = np.array([predictTree(tree, XNew) for tree in trees])
+        return preds.mean(axis=0)
+    
     return predict
 
-def gradient_boosting(X, y, n_estimators=100, learning_rate=0.1, max_depth=3):
-    def regression_tree(X, y, depth):
-        if depth == 0 or len(set(y)) == 1:
-            return np.mean(y)
-        best_feature, best_value, best_loss = None, None, float('inf')
-        for feature in range(X.shape[1]):
-            values = np.unique(X[:, feature])
-            for val in values:
-                left = y[X[:, feature] <= val]
-                right = y[X[:, feature] > val]
-                if len(left) == 0 or len(right) == 0:
-                    continue
-                loss = np.var(left)*len(left) + np.var(right)*len(right)
-                if loss < best_loss:
-                    best_feature, best_value, best_loss = feature, val, loss
-        if best_feature is None:
-            return np.mean(y)
-        left_tree = regression_tree(X[X[:, best_feature] <= best_value],
-                                    y[X[:, best_feature] <= best_value], depth - 1)
-        right_tree = regression_tree(X[X[:, best_feature] > best_value],
-                                     y[X[:, best_feature] > best_value], depth - 1)
-        return {'feature': best_feature, 'value': best_value, 'left': left_tree, 'right': right_tree}
-
-    def predict_tree(tree, x):
-        while isinstance(tree, dict):
-            if x[tree['feature']] <= tree['value']:
-                tree = tree['left']
-            else:
-                tree = tree['right']
-        return tree
-
-    y_pred = np.zeros_like(y)
+def gradientBoosting(X, y, nEstimators=100, learningRate=0.1, maxDepth=3):
+    """
+    Gradient boosting regressor.
+    
+    Parameters:
+        X: features
+        y: target values
+        nEstimators: number of boosting rounds
+        learningRate: learning rate (shrinkage)
+        maxDepth: maximum tree depth
+    
+    Returns:
+        predict function
+    """
+    yPred = np.zeros_like(y, dtype=float)
     models = []
-
-    for _ in range(n_estimators):
-        residual = y - y_pred
-        tree = regression_tree(X, residual, max_depth)
+    
+    for _ in range(nEstimators):
+        residual = y - yPred
+        tree = regressionTree(X, residual, maxDepth=maxDepth)
         models.append(tree)
-        preds = np.array([predict_tree(tree, x) for x in X])
-        y_pred += learning_rate * preds
-
-    def predict(X_new):
-        total = np.zeros(len(X_new))
+        preds = predictTree(tree, X)
+        yPred += learningRate * preds
+    
+    def predict(XNew):
+        total = np.zeros(len(XNew))
         for tree in models:
-            total += learning_rate * np.array([predict_tree(tree, x) for x in X_new])
+            total += learningRate * predictTree(tree, XNew)
         return total
-
+    
     return predict
 
+def pca(X, nComponents=None):
+    """
+    Principal component analysis.
+    
+    Parameters:
+        X: features (n_samples, n_features)
+        nComponents: number of components to keep
+    
+    Returns:
+        transformed data, eigenvalues, eigenvectors
+    """
+    XMean = np.mean(X, axis=0)
+    XCentered = X - XMean
+    
+    covMatrix = np.cov(XCentered, rowvar=False)
+    
+    eigenvalues, eigenvectors = np.linalg.eigh(covMatrix)
+    
+    sortedIndices = np.argsort(eigenvalues)[::-1]
+    eigenvalues = eigenvalues[sortedIndices]
+    eigenvectors = eigenvectors[:, sortedIndices]
+    
+    if nComponents is not None:
+        eigenvectors = eigenvectors[:, :nComponents]
+        eigenvalues = eigenvalues[:nComponents]
+    
+    XPca = XCentered @ eigenvectors
+    
+    return XPca, eigenvalues, eigenvectors
 
+def lda(X, y, nComponents=None):
+    """
+    Linear discriminant analysis.
+    
+    Parameters:
+        X: features
+        y: class labels
+        nComponents: number of components
+    
+    Returns:
+        transformed data, eigenvalues, eigenvectors
+    """
+    meanOverall = np.mean(X, axis=0)
+    
+    classes = np.unique(y)
+    meanClasses = np.array([np.mean(X[y == c], axis=0) for c in classes])
+    
+    Sb = np.zeros((X.shape[1], X.shape[1]))
+    for c, meanClass in zip(classes, meanClasses):
+        nc = X[y == c].shape[0]
+        meanDiff = (meanClass - meanOverall).reshape(-1, 1)
+        Sb += nc * (meanDiff @ meanDiff.T)
+    
+    Sw = np.zeros((X.shape[1], X.shape[1]))
+    for c, meanClass in zip(classes, meanClasses):
+        XC = X[y == c]
+        meanDiff = (XC - meanClass).T
+        Sw += meanDiff @ meanDiff.T
+    
+    try:
+        SwInv = np.linalg.inv(Sw + 1e-6 * np.eye(Sw.shape[0]))
+        eigenvals, eigenvecs = np.linalg.eig(SwInv @ Sb)
+    except:
+        eigenvals = np.zeros(min(len(classes) - 1, X.shape[1]))
+        eigenvecs = np.eye(X.shape[1], len(eigenvals))
+    
+    sortedIndices = np.argsort(np.abs(eigenvals))[::-1]
+    eigenvals = eigenvals[sortedIndices]
+    eigenvecs = eigenvecs[:, sortedIndices]
+    
+    if nComponents is not None:
+        eigenvecs = eigenvecs[:, :nComponents]
+        eigenvals = eigenvals[:nComponents]
+    
+    XLda = (X - meanOverall) @ eigenvecs.real
+    
+    return XLda, eigenvals.real, eigenvecs.real
+
+def logisticRegression(X, y, learningRate=0.01, nIters=1000):
+    """
+    Logistic regression classifier.
+    
+    Parameters:
+        X: features
+        y: binary labels (0/1)
+        learningRate: learning rate
+        nIters: number of iterations
+    
+    Returns:
+        weights, bias, predict function
+    """
+    nSamples, nFeatures = X.shape
+    weights = np.zeros(nFeatures)
+    bias = 0
+    
+    for _ in range(nIters):
+        linearModel = X @ weights + bias
+        yPred = 1 / (1 + np.exp(-linearModel))
+        
+        dw = (1 / nSamples) * (X.T @ (yPred - y))
+        db = (1 / nSamples) * np.sum(yPred - y)
+        
+        weights -= learningRate * dw
+        bias -= learningRate * db
+    
+    def predict(XNew):
+        linearModel = XNew @ weights + bias
+        yPred = 1 / (1 + np.exp(-linearModel))
+        return (yPred >= 0.5).astype(int)
+    
+    return weights, bias, predict

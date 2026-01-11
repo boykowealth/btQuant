@@ -1,115 +1,392 @@
 import numpy as np
 
-def fama_french3(market_returns, smb, hml, beta_m, beta_smb, beta_hml, risk_free=0.02):
+def famaFrench3(marketReturns, smb, hml, betaM, betaSmb, betaHml, riskFree=0.02):
     """
-    Calculates expected return using Fama-French 3-factor model.
+    Fama-French 3-factor model expected return.
     
-    :param market_returns: Market excess returns (list)
-    :param smb: Small-minus-big factor (size effect)
-    :param hml: High-minus-low factor (value effect)
-    :param beta_m: Beta coefficient for market risk
-    :param beta_smb: Beta coefficient for size factor
-    :param beta_hml: Beta coefficient for value factor
-    :param risk_free: Risk-free rate (default 2%)
-    :return: Expected asset return
+    Parameters:
+        marketReturns: market excess returns (array)
+        smb: size factor returns (array)
+        hml: value factor returns (array)
+        betaM: market beta
+        betaSmb: size beta
+        betaHml: value beta
+        riskFree: risk-free rate
+    
+    Returns:
+        expected return
     """
-    excess_market_return = sum(market_returns) / len(market_returns)
-    smb_avg = sum(smb) / len(smb)
-    hml_avg = sum(hml) / len(hml)
+    marketReturns = np.asarray(marketReturns)
+    smb = np.asarray(smb)
+    hml = np.asarray(hml)
     
-    expected_return = risk_free + beta_m * excess_market_return + beta_smb * smb_avg + beta_hml * hml_avg
-    return expected_return
+    excessMarket = np.mean(marketReturns)
+    smbAvg = np.mean(smb)
+    hmlAvg = np.mean(hml)
+    
+    expectedReturn = riskFree + betaM * excessMarket + betaSmb * smbAvg + betaHml * hmlAvg
+    
+    return expectedReturn
 
-def carhart4(market_returns, smb, hml, momentum, beta_m, beta_smb, beta_hml, beta_mom, risk_free=0.02):
+def carhart4(marketReturns, smb, hml, momentum, betaM, betaSmb, betaHml, betaMom, riskFree=0.02):
     """
-    Calculates expected return using Carhart 4-factor model.
+    Carhart 4-factor model expected return.
     
-    :param momentum: Momentum factor (past winners keep winning)
-    :return: Expected asset return
+    Parameters:
+        marketReturns: market excess returns
+        smb: size factor
+        hml: value factor
+        momentum: momentum factor
+        betaM: market beta
+        betaSmb: size beta
+        betaHml: value beta
+        betaMom: momentum beta
+        riskFree: risk-free rate
+    
+    Returns:
+        expected return
     """
-    excess_market_return = sum(market_returns) / len(market_returns)
-    smb_avg = sum(smb) / len(smb)
-    hml_avg = sum(hml) / len(hml)
-    momentum_avg = sum(momentum) / len(momentum)
+    marketReturns = np.asarray(marketReturns)
+    smb = np.asarray(smb)
+    hml = np.asarray(hml)
+    momentum = np.asarray(momentum)
+    
+    excessMarket = np.mean(marketReturns)
+    smbAvg = np.mean(smb)
+    hmlAvg = np.mean(hml)
+    momAvg = np.mean(momentum)
+    
+    expectedReturn = (riskFree + betaM * excessMarket + betaSmb * smbAvg + 
+                     betaHml * hmlAvg + betaMom * momAvg)
+    
+    return expectedReturn
 
-    expected_return = (risk_free + beta_m * excess_market_return + beta_smb * smb_avg +
-                       beta_hml * hml_avg + beta_mom * momentum_avg)
-    return expected_return
+def apt(riskFactors, factorBetas, riskFree=0.02):
+    """
+    Arbitrage Pricing Theory expected return.
+    
+    Parameters:
+        riskFactors: array of factor returns
+        factorBetas: array of factor sensitivities
+        riskFree: risk-free rate
+    
+    Returns:
+        expected return
+    """
+    riskFactors = np.asarray(riskFactors)
+    factorBetas = np.asarray(factorBetas)
+    
+    expectedReturn = riskFree + np.sum(factorBetas * riskFactors)
+    
+    return expectedReturn
 
-def apt(risk_factors, factor_betas, risk_free=0.02):
+def capm(marketReturn, beta, riskFree=0.02):
     """
-    Calculates expected return using Arbitrage Pricing Theory (APT) model.
+    Capital Asset Pricing Model expected return.
     
-    :param risk_factors: List of factor returns (e.g., GDP growth, inflation)
-    :param factor_betas: Corresponding sensitivities (beta values)
-    :param risk_free: Risk-free rate
-    :return: Expected asset return
+    Parameters:
+        marketReturn: market return
+        beta: systematic risk
+        riskFree: risk-free rate
+    
+    Returns:
+        expected return
     """
-    expected_return = risk_free + sum(b * f for b, f in zip(factor_betas, risk_factors))
-    return expected_return
+    return riskFree + beta * (marketReturn - riskFree)
 
-def nonlinear(risk_factors, factor_betas, nonlinearity="polynomial", degree=2, risk_free=0.02):
+def estimateBeta(assetReturns, marketReturns):
     """
-    Calculates expected return using a nonlinear factor model.
+    Estimate beta coefficient.
     
-    :param risk_factors: List of factor returns (e.g., GDP growth, inflation)
-    :param factor_betas: Corresponding sensitivities (beta values)
-    :param nonlinearity: Type of transformation ("polynomial", "logarithmic")
-    :param degree: Polynomial degree (for polynomial models)
-    :param risk_free: Risk-free rate
-    :return: Expected asset return
+    Parameters:
+        assetReturns: asset returns
+        marketReturns: market returns
+    
+    Returns:
+        dict with beta, alpha, rSquared
     """
-    transformed_factors = []
+    assetReturns = np.asarray(assetReturns)
+    marketReturns = np.asarray(marketReturns)
     
-    if nonlinearity == "polynomial":
-        transformed_factors = [f ** degree for f in risk_factors]
-    elif nonlinearity == "logarithmic":
-        transformed_factors = [np.log(f + 1) for f in risk_factors]
+    covMatrix = np.cov(assetReturns, marketReturns)
+    beta = covMatrix[0, 1] / covMatrix[1, 1]
     
-    expected_return = risk_free + sum(b * f for b, f in zip(factor_betas, transformed_factors))
-    return expected_return
+    alpha = np.mean(assetReturns) - beta * np.mean(marketReturns)
+    
+    yHat = alpha + beta * marketReturns
+    ssRes = np.sum((assetReturns - yHat)**2)
+    ssTot = np.sum((assetReturns - np.mean(assetReturns))**2)
+    rSquared = 1 - ssRes / ssTot
+    
+    return {'beta': beta, 'alpha': alpha, 'rSquared': rSquared}
 
-def liquidity(spread, turnover, beta_spread, beta_turnover, risk_free=0.02):
+def estimateFactorLoading(assetReturns, factorReturns):
     """
-    Calculates expected return using a liquidity factor model.
+    Estimate factor loadings via OLS.
     
-    :param spread: Bid-ask spread (proxy for liquidity risk)
-    :param turnover: Trading volume turnover (proxy for market depth)
-    :param beta_spread: Sensitivity to bid-ask spread
-    :param beta_turnover: Sensitivity to trading volume
-    :param risk_free: Risk-free rate
-    :return: Expected asset return
+    Parameters:
+        assetReturns: asset returns (1D array)
+        factorReturns: factor returns (2D array, nObs x nFactors)
+    
+    Returns:
+        dict with loadings, intercept, rSquared
     """
-    spread_avg = sum(spread) / len(spread)
-    turnover_avg = sum(turnover) / len(turnover)
+    assetReturns = np.asarray(assetReturns)
+    factorReturns = np.asarray(factorReturns)
+    
+    if factorReturns.ndim == 1:
+        factorReturns = factorReturns.reshape(-1, 1)
+    
+    X = np.column_stack([np.ones(len(assetReturns)), factorReturns])
+    
+    XtX = X.T @ X
+    XtY = X.T @ assetReturns
+    
+    params = np.linalg.solve(XtX, XtY)
+    
+    intercept = params[0]
+    loadings = params[1:]
+    
+    yHat = X @ params
+    ssRes = np.sum((assetReturns - yHat)**2)
+    ssTot = np.sum((assetReturns - np.mean(assetReturns))**2)
+    rSquared = 1 - ssRes / ssTot
+    
+    return {'loadings': loadings, 'intercept': intercept, 'rSquared': rSquared}
 
-    expected_return = risk_free + beta_spread * spread_avg + beta_turnover * turnover_avg
-    return expected_return
+def rollingBeta(assetReturns, marketReturns, window=60):
+    """
+    Calculate rolling beta.
+    
+    Parameters:
+        assetReturns: asset returns
+        marketReturns: market returns
+        window: rolling window size
+    
+    Returns:
+        array of rolling betas
+    """
+    assetReturns = np.asarray(assetReturns)
+    marketReturns = np.asarray(marketReturns)
+    
+    n = len(assetReturns)
+    betas = np.zeros(n - window + 1)
+    
+    for i in range(n - window + 1):
+        assetWindow = assetReturns[i:i + window]
+        marketWindow = marketReturns[i:i + window]
+        
+        cov = np.cov(assetWindow, marketWindow)[0, 1]
+        var = np.var(marketWindow, ddof=1)
+        
+        betas[i] = cov / var if var > 0 else 0
+    
+    return betas
 
-def sentiment(sentiment_scores, beta_sentiment, risk_free=0.02):
+def pcaFactors(returns, nFactors=3):
     """
-    Calculates expected return using a sentiment factor model.
+    Extract principal component factors.
     
-    :param sentiment_scores: List of sentiment scores (positive or negative market sentiment)
-    :param beta_sentiment: Sensitivity to sentiment factor
-    :param risk_free: Risk-free rate
-    :return: Expected asset return
+    Parameters:
+        returns: returns matrix (nObs x nAssets)
+        nFactors: number of factors to extract
+    
+    Returns:
+        dict with factors, loadings, explainedVariance
     """
-    sentiment_avg = sum(sentiment_scores) / len(sentiment_scores)
+    returns = np.asarray(returns)
     
-    expected_return = risk_free + beta_sentiment * sentiment_avg
-    return expected_return
+    meanReturns = np.mean(returns, axis=0)
+    centeredReturns = returns - meanReturns
+    
+    covMatrix = np.cov(centeredReturns, rowvar=False)
+    
+    eigenvals, eigenvecs = np.linalg.eigh(covMatrix)
+    
+    sortedIndices = np.argsort(eigenvals)[::-1]
+    eigenvals = eigenvals[sortedIndices]
+    eigenvecs = eigenvecs[:, sortedIndices]
+    
+    eigenvals = eigenvals[:nFactors]
+    eigenvecs = eigenvecs[:, :nFactors]
+    
+    factors = centeredReturns @ eigenvecs
+    
+    totalVar = np.sum(eigenvals)
+    explainedVar = eigenvals / totalVar if totalVar > 0 else np.zeros(nFactors)
+    
+    return {
+        'factors': factors,
+        'loadings': eigenvecs,
+        'explainedVariance': explainedVar
+    }
 
-def volatility(volatility_series, beta_volatility, risk_free=0.02):
+def factorMimicking(assetReturns, characteristicData, nPortfolios=5):
     """
-    Calculates expected return using a volatility factor model.
+    Create factor-mimicking portfolios (e.g., SMB, HML).
     
-    :param volatility_series: List of asset volatilities
-    :param beta_volatility: Sensitivity to volatility factor
-    :param risk_free: Risk-free rate
-    :return: Expected asset return
+    Parameters:
+        assetReturns: returns matrix (nObs x nAssets)
+        characteristicData: characteristic values (1D array, nAssets)
+        nPortfolios: number of portfolios for sorting
+    
+    Returns:
+        dict with longShort factor returns
     """
-    volatility_avg = sum(volatility_series) / len(volatility_series)
+    assetReturns = np.asarray(assetReturns)
+    characteristicData = np.asarray(characteristicData)
     
-    expected_return = risk_free + beta_volatility * volatility_avg
-    return expected_return
+    nObs = assetReturns.shape[0]
+    
+    sortedIndices = np.argsort(characteristicData)
+    nPerPortfolio = len(sortedIndices) // nPortfolios
+    
+    highIndices = sortedIndices[-nPerPortfolio:]
+    lowIndices = sortedIndices[:nPerPortfolio]
+    
+    highReturns = np.mean(assetReturns[:, highIndices], axis=1)
+    lowReturns = np.mean(assetReturns[:, lowIndices], axis=1)
+    
+    factorReturns = highReturns - lowReturns
+    
+    return {'factorReturns': factorReturns}
+
+def jensenAlpha(assetReturns, marketReturns, riskFree=0.0):
+    """
+    Calculate Jensen's alpha.
+    
+    Parameters:
+        assetReturns: asset returns
+        marketReturns: market returns
+        riskFree: risk-free rate per period
+    
+    Returns:
+        Jensen's alpha
+    """
+    assetReturns = np.asarray(assetReturns)
+    marketReturns = np.asarray(marketReturns)
+    
+    assetExcess = assetReturns - riskFree
+    marketExcess = marketReturns - riskFree
+    
+    beta = np.cov(assetExcess, marketExcess)[0, 1] / np.var(marketExcess, ddof=1)
+    
+    alpha = np.mean(assetExcess) - beta * np.mean(marketExcess)
+    
+    return alpha
+
+def treynorMazuy(assetReturns, marketReturns, riskFree=0.0):
+    """
+    Treynor-Mazuy market timing model.
+    
+    Parameters:
+        assetReturns: asset returns
+        marketReturns: market returns
+        riskFree: risk-free rate
+    
+    Returns:
+        dict with alpha, beta, gamma (timing coefficient)
+    """
+    assetReturns = np.asarray(assetReturns)
+    marketReturns = np.asarray(marketReturns)
+    
+    assetExcess = assetReturns - riskFree
+    marketExcess = marketReturns - riskFree
+    
+    marketExcess2 = marketExcess**2
+    
+    X = np.column_stack([np.ones(len(assetExcess)), marketExcess, marketExcess2])
+    
+    params = np.linalg.lstsq(X, assetExcess, rcond=None)[0]
+    
+    return {'alpha': params[0], 'beta': params[1], 'gamma': params[2]}
+
+def informationRatio(assetReturns, benchmarkReturns):
+    """
+    Information ratio (active return / tracking error).
+    
+    Parameters:
+        assetReturns: portfolio returns
+        benchmarkReturns: benchmark returns
+    
+    Returns:
+        information ratio
+    """
+    assetReturns = np.asarray(assetReturns)
+    benchmarkReturns = np.asarray(benchmarkReturns)
+    
+    activeReturns = assetReturns - benchmarkReturns
+    
+    return np.mean(activeReturns) / (np.std(activeReturns, ddof=1) + 1e-10)
+
+def appraisalRatio(alpha, residualRisk):
+    """
+    Appraisal ratio (alpha / residual risk).
+    
+    Parameters:
+        alpha: Jensen's alpha
+        residualRisk: residual standard deviation
+    
+    Returns:
+        appraisal ratio
+    """
+    return alpha / (residualRisk + 1e-10)
+
+def trackingError(assetReturns, benchmarkReturns):
+    """
+    Tracking error (std dev of active returns).
+    
+    Parameters:
+        assetReturns: portfolio returns
+        benchmarkReturns: benchmark returns
+    
+    Returns:
+        tracking error
+    """
+    assetReturns = np.asarray(assetReturns)
+    benchmarkReturns = np.asarray(benchmarkReturns)
+    
+    activeReturns = assetReturns - benchmarkReturns
+    
+    return np.std(activeReturns, ddof=1)
+
+def multifactor(assetReturns, factorReturns, riskFree=0.0):
+    """
+    Multi-factor model regression.
+    
+    Parameters:
+        assetReturns: asset returns
+        factorReturns: matrix of factor returns (nObs x nFactors)
+        riskFree: risk-free rate
+    
+    Returns:
+        dict with alpha, betas, rSquared, residuals
+    """
+    assetReturns = np.asarray(assetReturns)
+    factorReturns = np.asarray(factorReturns)
+    
+    if factorReturns.ndim == 1:
+        factorReturns = factorReturns.reshape(-1, 1)
+    
+    assetExcess = assetReturns - riskFree
+    
+    X = np.column_stack([np.ones(len(assetExcess)), factorReturns])
+    
+    params = np.linalg.lstsq(X, assetExcess, rcond=None)[0]
+    
+    alpha = params[0]
+    betas = params[1:]
+    
+    yHat = X @ params
+    residuals = assetExcess - yHat
+    
+    ssRes = np.sum(residuals**2)
+    ssTot = np.sum((assetExcess - np.mean(assetExcess))**2)
+    rSquared = 1 - ssRes / ssTot
+    
+    return {
+        'alpha': alpha,
+        'betas': betas,
+        'rSquared': rSquared,
+        'residuals': residuals
+    }

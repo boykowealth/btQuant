@@ -1,230 +1,514 @@
 import numpy as np
-from scipy.stats import norm, stats
 
-def parametric_var(returns, confidence_level=0.95):
-    """
-    Parametric Value at Risk (VaR) calculation assuming normal distribution.
+def _normCdf(x):
+    """Standard normal CDF approximation."""
+    return 0.5 * (1.0 + np.tanh(x / np.sqrt(2.0) * 0.7978845608))
+
+def _normPpf(p):
+    """Standard normal percent point function (inverse CDF)."""
+    if p <= 0 or p >= 1:
+        return np.nan
     
-    :param returns: Series or array of asset returns
-    :param confidence_level: The confidence level for VaR calculation (default is 95%)
-    :return: VaR at the given confidence level
+    if p < 0.5:
+        sign = -1
+        p = 1 - p
+    else:
+        sign = 1
+    
+    t = np.sqrt(-2 * np.log(1 - p))
+    
+    c0 = 2.515517
+    c1 = 0.802853
+    c2 = 0.010328
+    d1 = 1.432788
+    d2 = 0.189269
+    d3 = 0.001308
+    
+    x = t - (c0 + c1 * t + c2 * t**2) / (1 + d1 * t + d2 * t**2 + d3 * t**3)
+    
+    return sign * x
+
+def _normPdf(x):
+    """Standard normal PDF."""
+    return np.exp(-0.5 * x**2) / np.sqrt(2 * np.pi)
+
+def parametricVar(returns, confidence=0.95):
+    """
+    Parametric Value at Risk (assumes normal distribution).
+    
+    Parameters:
+        returns: array of returns
+        confidence: confidence level (default 0.95)
+    
+    Returns:
+        VaR estimate
     """
     mean = np.mean(returns)
     std = np.std(returns)
     
-    z_score = norm.ppf(1 - confidence_level)
+    zScore = _normPpf(1 - confidence)
     
-    var = -(mean + z_score * std)
+    var = -(mean + zScore * std)
     return var
 
-def historical_var(returns, confidence_level=0.95):
+def historicalVar(returns, confidence=0.95):
     """
-    Historical Simulation Value at Risk (VaR) calculation.
+    Historical simulation Value at Risk.
     
-    :param returns: Series or array of asset returns
-    :param confidence_level: The confidence level for VaR calculation (default is 95%)
-    :return: VaR at the given confidence level based on historical simulation
+    Parameters:
+        returns: array of returns
+        confidence: confidence level
+    
+    Returns:
+        VaR estimate
     """
-    sorted_returns = np.sort(returns)
-    index = int((1 - confidence_level) * len(sorted_returns))
-    var = -sorted_returns[index]
+    sortedReturns = np.sort(returns)
+    index = int((1 - confidence) * len(sortedReturns))
+    var = -sortedReturns[index]
     return var
 
-def parametric_cvar(returns, confidence_level=0.95):
+def parametricCvar(returns, confidence=0.95):
     """
-    Parametric Conditional Value at Risk (CVaR) calculation assuming normal distribution.
+    Parametric Conditional Value at Risk (assumes normal).
     
-    :param returns: Series or array of asset returns
-    :param confidence_level: The confidence level for CVaR calculation (default is 95%)
-    :return: CVaR at the given confidence level
-    """
-    mean = np.mean(returns)
-    std = np.std(returns)
+    Parameters:
+        returns: array of returns
+        confidence: confidence level
     
-    z_score = norm.ppf(1 - confidence_level)
-    
-    cvar = -(mean + std * (norm.pdf(z_score) / (1 - confidence_level) - z_score))
-    return cvar
-
-def parametric_cvar(returns, confidence_level=0.95):
-    """
-    Parametric Conditional Value at Risk (CVaR) calculation assuming normal distribution.
-    
-    :param returns: Series or array of asset returns
-    :param confidence_level: The confidence level for CVaR calculation (default is 95%)
-    :return: CVaR at the given confidence level
+    Returns:
+        CVaR estimate
     """
     mean = np.mean(returns)
     std = np.std(returns)
     
-    z_score = norm.ppf(1 - confidence_level)
+    zScore = _normPpf(1 - confidence)
     
-    cvar = -(mean + std * (norm.pdf(z_score) / (1 - confidence_level) - z_score))
+    cvar = -(mean + std * (_normPdf(zScore) / (1 - confidence)))
     return cvar
 
-def historical_cvar(returns, confidence_level=0.95):
+def historicalCvar(returns, confidence=0.95):
     """
-    Historical Simulation Conditional Value at Risk (CVaR) calculation.
+    Historical simulation Conditional Value at Risk.
     
-    :param returns: Series or array of asset returns
-    :param confidence_level: The confidence level for CVaR calculation (default is 95%)
-    :return: CVaR at the given confidence level based on historical simulation
+    Parameters:
+        returns: array of returns
+        confidence: confidence level
+    
+    Returns:
+        CVaR estimate
     """
-    sorted_returns = np.sort(returns)
-    index = int((1 - confidence_level) * len(sorted_returns))
-    tail_losses = sorted_returns[:index]
-    cvar = -np.mean(tail_losses)
+    sortedReturns = np.sort(returns)
+    index = int((1 - confidence) * len(sortedReturns))
+    tailLosses = sortedReturns[:index + 1]
+    cvar = -np.mean(tailLosses)
     return cvar
 
-def expected_shortfall(returns, confidence_level=0.95):
+def expectedShortfall(returns, confidence=0.95):
     """
-    Expected Shortfall (ES) calculation. This is the average loss beyond the VaR threshold.
+    Expected shortfall (ES), same as historical CVaR.
     
-    :param returns: Series or array of asset returns
-    :param confidence_level: The confidence level for ES calculation (default is 95%)
-    :return: ES at the given confidence level
+    Parameters:
+        returns: array of returns
+        confidence: confidence level
+    
+    Returns:
+        ES estimate
     """
-    var = historical_var(returns, confidence_level)
-    tail_losses = returns[returns <= -var]
-    es = -np.mean(tail_losses)
-    return es
+    return historicalCvar(returns, confidence)
 
 def drawdown(returns):
     """
-    Calculate the maximum drawdown of a portfolio.
+    Maximum drawdown.
     
-    :param returns: Cumulative returns series of the portfolio
-    :return: Maximum drawdown (as a fraction of portfolio value)
+    Parameters:
+        returns: array of returns
+    
+    Returns:
+        maximum drawdown (negative value)
     """
-    cumulative_returns = np.cumsum(returns)
-    peak = np.maximum.accumulate(cumulative_returns)
-    drawdowns = (cumulative_returns - peak) / peak
-    max_drawdown = np.min(drawdowns)
-    return max_drawdown
+    cumReturns = np.cumsum(returns)
+    peak = np.maximum.accumulate(cumReturns)
+    drawdowns = (cumReturns - peak) / (peak + 1)
+    maxDrawdown = np.min(drawdowns)
+    return maxDrawdown
 
-def calmar_ratio(returns, risk_free_rate=0):
+def calmarRatio(returns, riskFreeRate=0):
     """
-    Calculate the Calmar ratio for a portfolio, which is the ratio of the annualized return to the maximum drawdown.
+    Calmar ratio: annualized return / max drawdown.
     
-    :param returns: Annualized returns series of the portfolio
-    :param risk_free_rate: Risk-free rate (optional, default is 0)
-    :return: Calmar ratio
+    Parameters:
+        returns: array of returns
+        riskFreeRate: risk-free rate
+    
+    Returns:
+        Calmar ratio
     """
-    annualized_return = np.mean(returns) * 252  # Assuming daily returns
-    max_drawdown = drawdown(returns)
-    calmar_ratio = annualized_return / abs(max_drawdown)
-    return calmar_ratio
+    annualizedReturn = np.mean(returns) * 252
+    maxDrawdown = drawdown(returns)
+    calmar = annualizedReturn / abs(maxDrawdown) if maxDrawdown != 0 else np.inf
+    return calmar
 
-def sharpe_ratio(returns, risk_free_rate=0):
+def sharpeRatio(returns, riskFreeRate=0):
     """
-    Calculate the Sharpe Ratio for a series of returns.
+    Sharpe ratio.
     
-    :param returns: Array or Series of periodic portfolio returns
-    :param risk_free_rate: Risk-free rate (expressed per period, e.g., daily)
-    :return: Sharpe Ratio
+    Parameters:
+        returns: array of returns
+        riskFreeRate: risk-free rate per period
+    
+    Returns:
+        Sharpe ratio
     """
-    excess_returns = returns - risk_free_rate
-    return np.mean(excess_returns) / np.std(excess_returns)
+    excessReturns = returns - riskFreeRate
+    return np.mean(excessReturns) / (np.std(excessReturns) + 1e-10)
 
-def omega_ratio(returns, threshold=0.0):
+def sortinoRatio(returns, riskFreeRate=0, target=0):
     """
-    Calculate the Omega Ratio of a return series.
+    Sortino ratio (uses downside deviation).
     
-    :param returns: Array or Series of returns
-    :param threshold: Threshold return (e.g., risk-free rate or 0)
-    :return: Omega Ratio
+    Parameters:
+        returns: array of returns
+        riskFreeRate: risk-free rate
+        target: target return (default 0)
+    
+    Returns:
+        Sortino ratio
+    """
+    excessReturns = returns - riskFreeRate
+    downsideReturns = excessReturns[excessReturns < target]
+    
+    if len(downsideReturns) == 0:
+        return np.inf
+    
+    downsideDev = np.sqrt(np.mean(downsideReturns**2))
+    
+    return np.mean(excessReturns) / (downsideDev + 1e-10)
+
+def omegaRatio(returns, threshold=0.0):
+    """
+    Omega ratio: ratio of gains to losses.
+    
+    Parameters:
+        returns: array of returns
+        threshold: threshold return
+    
+    Returns:
+        Omega ratio
     """
     gains = returns[returns > threshold] - threshold
     losses = threshold - returns[returns < threshold]
     
-    omega = np.sum(gains) / np.sum(losses) if np.sum(losses) != 0 else np.inf
+    sumGains = np.sum(gains) if len(gains) > 0 else 0
+    sumLosses = np.sum(losses) if len(losses) > 0 else 1e-10
+    
+    omega = sumGains / sumLosses
     return omega
 
-def modified_var(returns, confidence=0.95):
+def modifiedVar(returns, confidence=0.95):
     """
-    Computes the modified Value at Risk using the Cornish-Fisher expansion,
-    which adjusts for skewness and kurtosis in the return distribution.
-
+    Modified VaR using Cornish-Fisher expansion for skewness and kurtosis.
+    
     Parameters:
-    - returns: array-like, asset or portfolio returns
-    - confidence: float, confidence level (e.g. 0.95)
-
+        returns: array of returns
+        confidence: confidence level
+    
     Returns:
-    - Modified Value at Risk estimate
+        modified VaR
     """
-    z = stats.norm.ppf(confidence)
-    s = stats.skew(returns)
-    k = stats.kurtosis(returns, fisher=False)
-    z_cf = z + (1/6)*(z**2 - 1)*s + (1/24)*(z**3 - 3*z)*k - (1/36)*(2*z**3 - 5*z)*s**2
-    return -np.mean(returns) + z_cf * np.std(returns)
+    z = _normPpf(confidence)
+    
+    s = _skew(returns)
+    k = _kurtosis(returns)
+    
+    zCf = z + (1 / 6) * (z**2 - 1) * s + (1 / 24) * (z**3 - 3 * z) * (k - 3) - (1 / 36) * (2 * z**3 - 5 * z) * s**2
+    
+    return -np.mean(returns) + zCf * np.std(returns)
 
-def hill_tail_index(returns, k=50):
+def _skew(x):
+    """Sample skewness."""
+    n = len(x)
+    mean = np.mean(x)
+    m2 = np.sum((x - mean)**2) / n
+    m3 = np.sum((x - mean)**3) / n
+    return m3 / (m2**1.5 + 1e-10)
+
+def _kurtosis(x):
+    """Sample excess kurtosis."""
+    n = len(x)
+    mean = np.mean(x)
+    m2 = np.sum((x - mean)**2) / n
+    m4 = np.sum((x - mean)**4) / n
+    return m4 / (m2**2 + 1e-10)
+
+def hillTailIndex(returns, k=50):
     """
-    Estimates the tail index of a return distribution using the Hill estimator,
-    useful for detecting heavy (fat) tails.
-
+    Hill estimator for tail index (heavy tails).
+    
     Parameters:
-    - returns: array-like, asset or portfolio returns
-    - k: int, number of top order statistics (extreme values) to use
-
+        returns: array of returns
+        k: number of extreme values
+    
     Returns:
-    - Hill tail index (lower value = heavier tail)
+        tail index (lower = heavier tail)
     """
-    sorted_returns = -np.sort(-returns)  # descending order
-    top_k = sorted_returns[:k]
-    return 1 / (np.mean(np.log(top_k / sorted_returns[k])))
+    sortedReturns = -np.sort(-returns)
+    topK = sortedReturns[:k]
+    
+    if len(topK) < 2:
+        return np.nan
+    
+    return 1 / np.mean(np.log(topK / sortedReturns[k]))
 
-def excess_kurtosis_ratio(returns):
+def excessKurtosis(returns):
     """
-    Calculates the ratio of excess kurtosis to the normal distribution's kurtosis,
-    to quantify fat-tailed behavior.
-
+    Excess kurtosis.
+    
     Parameters:
-    - returns: array-like
-
+        returns: array of returns
+    
     Returns:
-    - Excess kurtosis ratio (Normal = 1)
+        excess kurtosis
     """
-    return stats.kurtosis(returns) / 3
+    return _kurtosis(returns)
 
-def copula_crash(returns_x, returns_y, confidence_level=0.95):
+def beta(assetReturns, marketReturns):
     """
-    Copula-based crash risk modeling using a Gaussian copula to estimate tail dependence.
+    Beta coefficient (systematic risk).
     
-    :param returns_x: Series or array of asset X returns
-    :param returns_y: Series or array of asset Y returns
-    :param confidence_level: Confidence level for crash risk estimation (default is 95%)
-    :return: Joint probability of extreme losses
+    Parameters:
+        assetReturns: asset returns
+        marketReturns: market returns
+    
+    Returns:
+        beta
     """
+    covariance = np.cov(assetReturns, marketReturns)[0, 1]
+    marketVariance = np.var(marketReturns)
+    return covariance / (marketVariance + 1e-10)
 
-    u_x = stats.rankdata(returns_x) / (len(returns_x) + 1)
-    u_y = stats.rankdata(returns_y) / (len(returns_y) + 1)
-    
-    rho = np.corrcoef(returns_x, returns_y)[0, 1]
-    
-    copula = stats.norm.ppf(u_x), stats.norm.ppf(u_y)
-    
-    joint_loss_prob = stats.multivariate_normal.cdf(copula, mean=[0, 0], cov=[[1, rho], [rho, 1]])
-    
-    return joint_loss_prob if joint_loss_prob < 1 - confidence_level else 1 - confidence_level
-
-def copula_gain(returns_x, returns_y, confidence_level=0.95):
+def treynorRatio(returns, marketReturns, riskFreeRate=0):
     """
-    Copula-based right-tail dependence modeling for extreme upward movements.
+    Treynor ratio: excess return / beta.
     
-    :param returns_x: Series or array of asset X returns
-    :param returns_y: Series or array of asset Y returns
-    :param confidence_level: Confidence level for extreme gain estimation (default is 95%)
-    :return: Joint probability of extreme gains
+    Parameters:
+        returns: portfolio returns
+        marketReturns: market returns
+        riskFreeRate: risk-free rate
+    
+    Returns:
+        Treynor ratio
     """
+    excessReturn = np.mean(returns) - riskFreeRate
+    portfolioBeta = beta(returns, marketReturns)
+    return excessReturn / (portfolioBeta + 1e-10)
 
-    u_x = stats.rankdata(returns_x) / (len(returns_x) + 1)
-    u_y = stats.rankdata(returns_y) / (len(returns_y) + 1)
+def informationRatio(returns, benchmarkReturns):
+    """
+    Information ratio: active return / tracking error.
     
-    rho = np.corrcoef(returns_x, returns_y)[0, 1]
-    theta = 2 * (1 - rho) 
+    Parameters:
+        returns: portfolio returns
+        benchmarkReturns: benchmark returns
     
-    joint_gain_prob = (u_x ** -theta + u_y ** -theta - 1) ** (-1/theta)
-    
-    return joint_gain_prob if joint_gain_prob > confidence_level else confidence_level
+    Returns:
+        information ratio
+    """
+    activeReturns = returns - benchmarkReturns
+    return np.mean(activeReturns) / (np.std(activeReturns) + 1e-10)
 
+def trackingError(returns, benchmarkReturns):
+    """
+    Tracking error (standard deviation of active returns).
+    
+    Parameters:
+        returns: portfolio returns
+        benchmarkReturns: benchmark returns
+    
+    Returns:
+        tracking error
+    """
+    activeReturns = returns - benchmarkReturns
+    return np.std(activeReturns)
+
+def maxDrawdownDuration(returns):
+    """
+    Maximum drawdown duration in periods.
+    
+    Parameters:
+        returns: array of returns
+    
+    Returns:
+        maximum drawdown duration
+    """
+    cumReturns = np.cumsum(returns)
+    peak = np.maximum.accumulate(cumReturns)
+    
+    underwater = cumReturns < peak
+    
+    maxDuration = 0
+    currentDuration = 0
+    
+    for isUnderwater in underwater:
+        if isUnderwater:
+            currentDuration += 1
+            maxDuration = max(maxDuration, currentDuration)
+        else:
+            currentDuration = 0
+    
+    return maxDuration
+
+def valueAtRisk(returns, confidence=0.95, method='historical'):
+    """
+    Value at Risk with method selection.
+    
+    Parameters:
+        returns: array of returns
+        confidence: confidence level
+        method: 'historical' or 'parametric'
+    
+    Returns:
+        VaR estimate
+    """
+    if method == 'historical':
+        return historicalVar(returns, confidence)
+    elif method == 'parametric':
+        return parametricVar(returns, confidence)
+    else:
+        raise ValueError("method must be 'historical' or 'parametric'")
+
+def conditionalValueAtRisk(returns, confidence=0.95, method='historical'):
+    """
+    Conditional Value at Risk with method selection.
+    
+    Parameters:
+        returns: array of returns
+        confidence: confidence level
+        method: 'historical' or 'parametric'
+    
+    Returns:
+        CVaR estimate
+    """
+    if method == 'historical':
+        return historicalCvar(returns, confidence)
+    elif method == 'parametric':
+        return parametricCvar(returns, confidence)
+    else:
+        raise ValueError("method must be 'historical' or 'parametric'")
+
+def downsideDeviation(returns, target=0):
+    """
+    Downside deviation.
+    
+    Parameters:
+        returns: array of returns
+        target: target return
+    
+    Returns:
+        downside deviation
+    """
+    downsideReturns = returns[returns < target] - target
+    if len(downsideReturns) == 0:
+        return 0.0
+    return np.sqrt(np.mean(downsideReturns**2))
+
+def ulcerIndex(returns):
+    """
+    Ulcer index (downside volatility measure).
+    
+    Parameters:
+        returns: array of returns
+    
+    Returns:
+        ulcer index
+    """
+    cumReturns = np.cumsum(returns)
+    peak = np.maximum.accumulate(cumReturns)
+    drawdowns = (cumReturns - peak) / (peak + 1)
+    return np.sqrt(np.mean(drawdowns**2))
+
+def painIndex(returns):
+    """
+    Pain index (average squared drawdown).
+    
+    Parameters:
+        returns: array of returns
+    
+    Returns:
+        pain index
+    """
+    cumReturns = np.cumsum(returns)
+    peak = np.maximum.accumulate(cumReturns)
+    drawdowns = (cumReturns - peak) / (peak + 1)
+    return np.mean(drawdowns**2)
+
+def tailRatio(returns, confidence=0.95):
+    """
+    Tail ratio: right tail / left tail.
+    
+    Parameters:
+        returns: array of returns
+        confidence: confidence level
+    
+    Returns:
+        tail ratio (>1 means right tail heavier)
+    """
+    rightTail = np.percentile(returns, confidence * 100)
+    leftTail = np.percentile(returns, (1 - confidence) * 100)
+    return abs(rightTail / leftTail) if leftTail != 0 else np.inf
+
+def capturRatio(returns, marketReturns):
+    """
+    Upside and downside capture ratios.
+    
+    Parameters:
+        returns: portfolio returns
+        marketReturns: market returns
+    
+    Returns:
+        dict with upsideCapture, downsideCapture, captureRatio
+    """
+    upMarket = marketReturns > 0
+    downMarket = marketReturns < 0
+    
+    if np.sum(upMarket) > 0:
+        upsideCapture = np.mean(returns[upMarket]) / np.mean(marketReturns[upMarket])
+    else:
+        upsideCapture = 0.0
+    
+    if np.sum(downMarket) > 0:
+        downsideCapture = np.mean(returns[downMarket]) / np.mean(marketReturns[downMarket])
+    else:
+        downsideCapture = 0.0
+    
+    captureRatio = upsideCapture / downsideCapture if downsideCapture != 0 else np.inf
+    
+    return {
+        'upsideCapture': upsideCapture,
+        'downsideCapture': downsideCapture,
+        'captureRatio': captureRatio
+    }
+
+def stabilityRatio(returns):
+    """
+    Stability of returns (R-squared of linear regression).
+    
+    Parameters:
+        returns: array of returns
+    
+    Returns:
+        stability ratio (0-1, higher = more stable)
+    """
+    cumReturns = np.cumsum(returns)
+    x = np.arange(len(cumReturns))
+    
+    xMean = np.mean(x)
+    yMean = np.mean(cumReturns)
+    
+    numerator = np.sum((x - xMean) * (cumReturns - yMean))
+    denominator = np.sqrt(np.sum((x - xMean)**2) * np.sum((cumReturns - yMean)**2))
+    
+    if denominator == 0:
+        return 0.0
+    
+    correlation = numerator / denominator
+    return correlation**2

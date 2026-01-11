@@ -1,265 +1,346 @@
 import numpy as np
-import pandas as pd
-from scipy import stats
-from scipy.stats import t, chi2
 
-def ols(y, X, add_constant=True, robust=False, cov_type='HC3'):
+def _tCdf(x, df):
+    """Student's t cumulative distribution function."""
+    a = df / (df + x**2)
+    return 1.0 - 0.5 * _betaInc(df / 2, 0.5, a)
+
+def _betaInc(a, b, x):
+    """Incomplete beta function approximation."""
+    if x <= 0:
+        return 0
+    if x >= 1:
+        return 1
+    
+    bt = np.exp(a * np.log(x) + b * np.log(1 - x) - _logBeta(a, b))
+    
+    if x < (a + 1) / (a + b + 2):
+        return bt * _betaCf(a, b, x) / a
+    else:
+        return 1 - bt * _betaCf(b, a, 1 - x) / b
+
+def _betaCf(a, b, x, maxIter=100):
+    """Continued fraction for incomplete beta function."""
+    qab = a + b
+    qap = a + 1
+    qam = a - 1
+    c = 1.0
+    d = 1.0 - qab * x / qap
+    
+    if abs(d) < 1e-30:
+        d = 1e-30
+    d = 1.0 / d
+    h = d
+    
+    for m in range(1, maxIter):
+        m2 = 2 * m
+        aa = m * (b - m) * x / ((qam + m2) * (a + m2))
+        d = 1.0 + aa * d
+        if abs(d) < 1e-30:
+            d = 1e-30
+        c = 1.0 + aa / c
+        if abs(c) < 1e-30:
+            c = 1e-30
+        d = 1.0 / d
+        h *= d * c
+        
+        aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2))
+        d = 1.0 + aa * d
+        if abs(d) < 1e-30:
+            d = 1e-30
+        c = 1.0 + aa / c
+        if abs(c) < 1e-30:
+            c = 1e-30
+        d = 1.0 / d
+        delta = d * c
+        h *= delta
+        
+        if abs(delta - 1.0) < 1e-8:
+            break
+    
+    return h
+
+def _logBeta(a, b):
+    """Log beta function."""
+    return _logGamma(a) + _logGamma(b) - _logGamma(a + b)
+
+def _logGamma(x):
+    """Log gamma function approximation."""
+    if x <= 0:
+        return np.inf
+    
+    cof = [76.18009172947146, -86.50532032941677, 24.01409824083091,
+           -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5]
+    
+    y = x
+    tmp = x + 5.5
+    tmp -= (x + 0.5) * np.log(tmp)
+    ser = 1.000000000190015
+    
+    for c in cof:
+        y += 1
+        ser += c / y
+    
+    return -tmp + np.log(2.5066282746310005 * ser / x)
+
+def _chiSqCdf(x, df):
+    """Chi-squared cumulative distribution function."""
+    return _gammaInc(df / 2, x / 2)
+
+def _gammaInc(a, x):
+    """Incomplete gamma function."""
+    if x < 0 or a <= 0:
+        return 0.0
+    
+    if x < a + 1:
+        ap = a
+        delta = 1.0 / a
+        sumVal = delta
+        for n in range(1, 100):
+            ap += 1
+            delta *= x / ap
+            sumVal += delta
+            if delta < sumVal * 1e-10:
+                break
+        return sumVal * np.exp(-x + a * np.log(x) - _logGamma(a))
+    else:
+        b = x + 1 - a
+        c = 1.0 / 1e-30
+        d = 1.0 / b
+        h = d
+        for i in range(1, 100):
+            an = -i * (i - a)
+            b += 2.0
+            d = an * d + b
+            if abs(d) < 1e-30:
+                d = 1e-30
+            c = b + an / c
+            if abs(c) < 1e-30:
+                c = 1e-30
+            d = 1.0 / d
+            delta = d * c
+            h *= delta
+            if abs(delta - 1.0) < 1e-10:
+                break
+        return 1.0 - h * np.exp(-x + a * np.log(x) - _logGamma(a))
+
+def ols(y, X, addConst=True, robust=False, covType='HC3'):
     """
-    Perform OLS regression with optional robust standard errors.
+    Ordinary least squares regression with optional robust standard errors.
     
     Parameters:
-    -----------
-    y : array-like
-        Dependent variable
-    X : array-like
-        Independent variables (predictors)
-    add_constant : bool, default=True
-        Whether to add a constant term to the model
-    robust : bool, default=False
-        Whether to use robust standard errors
-    cov_type : str, default='HC3'
-        Type of robust standard error: 'HC0', 'HC1', 'HC2', 'HC3', or 'HC4'
-        
+        y: dependent variable (1D array)
+        X: independent variables (2D array or 1D for single predictor)
+        addConst: add constant term
+        robust: use robust standard errors
+        covType: 'HC0', 'HC1', 'HC2', 'HC3', 'HC4'
+    
     Returns:
-    --------
-    dict : Dictionary containing regression results including coefficients, std errors,
-           t-stats, p-values, R-squared, adjusted R-squared, and more.
+        dict with coefficients, std_errors, t_stats, p_values, r_squared, etc.
     """
     y = np.asarray(y).flatten()
     X = np.asarray(X)
     
-    if add_constant:
+    if X.ndim == 1:
+        X = X.reshape(-1, 1)
+    
+    if addConst:
         X = np.column_stack([np.ones(len(y)), X])
     
     n, k = X.shape
     
-    # β = (X'X)^(-1)X'y
-    XtX_inv = np.linalg.inv(X.T @ X)
-    beta = XtX_inv @ X.T @ y
+    XtXInv = np.linalg.inv(X.T @ X)
+    beta = XtXInv @ X.T @ y
     
     residuals = y - X @ beta
-    y_hat = X @ beta
+    yHat = X @ beta
     
     df = n - k
     
-    SSR = sum((y_hat - np.mean(y))**2)
-    SST = sum((y - np.mean(y))**2)
-    SSE = sum(residuals**2)
+    SSR = np.sum((yHat - np.mean(y))**2)
+    SST = np.sum((y - np.mean(y))**2)
+    SSE = np.sum(residuals**2)
     
-    r_squared = SSR / SST
-    adj_r_squared = 1 - (1 - r_squared) * (n - 1) / (n - k)
+    rSquared = SSR / SST
+    adjRSquared = 1 - (1 - rSquared) * (n - 1) / df
     
     if not robust:
-        sigma_squared = SSE / df
-        cov_matrix = sigma_squared * XtX_inv
-        std_errors = np.sqrt(np.diag(cov_matrix))
+        sigma2 = SSE / df
+        covMatrix = sigma2 * XtXInv
+        stdErrors = np.sqrt(np.diag(covMatrix))
     else:
-        if cov_type == 'HC0':
+        if covType == 'HC0':
             u2 = residuals**2
-        elif cov_type == 'HC1':
+        elif covType == 'HC1':
             u2 = residuals**2 * (n / df)
-        elif cov_type == 'HC2':
-            h = np.diag(X @ XtX_inv @ X.T)
+        elif covType == 'HC2':
+            h = np.diag(X @ XtXInv @ X.T)
             u2 = residuals**2 / (1 - h)
-        elif cov_type == 'HC3':
-            h = np.diag(X @ XtX_inv @ X.T)
+        elif covType == 'HC3':
+            h = np.diag(X @ XtXInv @ X.T)
             u2 = residuals**2 / (1 - h)**2
-        elif cov_type == 'HC4':
-            h = np.diag(X @ XtX_inv @ X.T)
+        elif covType == 'HC4':
+            h = np.diag(X @ XtXInv @ X.T)
             delta = np.minimum(4, h / np.mean(h))
             u2 = residuals**2 / (1 - h)**delta
         else:
-            raise ValueError("cov_type must be one of 'HC0', 'HC1', 'HC2', 'HC3', or 'HC4'")
+            raise ValueError("covType must be HC0, HC1, HC2, HC3, or HC4")
         
         Xu2 = X * u2[:, np.newaxis]
-        cov_matrix = XtX_inv @ (X.T @ Xu2) @ XtX_inv
-        std_errors = np.sqrt(np.diag(cov_matrix))
+        covMatrix = XtXInv @ (X.T @ Xu2) @ XtXInv
+        stdErrors = np.sqrt(np.diag(covMatrix))
     
-    t_stats = beta / std_errors
-    p_values = 2 * (1 - t.cdf(abs(t_stats), df))
+    tStats = beta / stdErrors
+    pValues = 2 * (1 - _tCdf(np.abs(tStats), df))
     
-    t_crit = t.ppf(0.975, df)
-    ci_lower = beta - t_crit * std_errors
-    ci_upper = beta + t_crit * std_errors
+    tCrit = 1.96
+    ciLower = beta - tCrit * stdErrors
+    ciUpper = beta + tCrit * stdErrors
     
-    if add_constant:
+    fStat = None
+    fPValue = None
+    if addConst and k > 1:
         rss1 = SSE
-        X_restricted = X[:, 0].reshape(-1, 1)
-        beta_restricted = np.linalg.inv(X_restricted.T @ X_restricted) @ X_restricted.T @ y
-        residuals_restricted = y - X_restricted @ beta_restricted
-        rss0 = sum(residuals_restricted**2)
+        XRestricted = X[:, 0].reshape(-1, 1)
+        betaRestricted = np.linalg.inv(XRestricted.T @ XRestricted) @ XRestricted.T @ y
+        residualsRestricted = y - XRestricted @ betaRestricted
+        rss0 = np.sum(residualsRestricted**2)
         
-        f_stat = ((rss0 - rss1) / (k - 1)) / (rss1 / df)
-        f_p_value = 1 - stats.f.cdf(f_stat, k - 1, df)
-    else:
-        f_stat = None
-        f_p_value = None
+        fStat = ((rss0 - rss1) / (k - 1)) / (rss1 / df)
+        fPValue = 1 - _chiSqCdf(fStat * (k - 1), k - 1)
     
     return {
         'coefficients': beta,
-        'std_errors': std_errors,
-        't_stats': t_stats,
-        'p_values': p_values,
-        'conf_int_lower': ci_lower,
-        'conf_int_upper': ci_upper,
+        'stdErrors': stdErrors,
+        'tStats': tStats,
+        'pValues': pValues,
+        'confIntLower': ciLower,
+        'confIntUpper': ciUpper,
         'residuals': residuals,
-        'fitted_values': y_hat,
-        'r_squared': r_squared,
-        'adj_r_squared': adj_r_squared,
-        'f_stat': f_stat,
-        'f_p_value': f_p_value,
-        'n_obs': n,
+        'fittedValues': yHat,
+        'rSquared': rSquared,
+        'adjRSquared': adjRSquared,
+        'fStat': fStat,
+        'fPValue': fPValue,
+        'nObs': n,
         'df': df,
         'sse': SSE,
-        'cov_matrix': cov_matrix
+        'covMatrix': covMatrix
     }
 
-def white_test(y, X, add_constant=True):
+def whiteTest(y, X, addConst=True):
     """
     White's test for heteroskedasticity.
     
     Parameters:
-    -----------
-    y : array-like
-        Dependent variable
-    X : array-like
-        Independent variables (predictors)
-    add_constant : bool, default=True
-        Whether to add a constant term to the model
-        
+        y: dependent variable
+        X: independent variables
+        addConst: add constant term
+    
     Returns:
-    --------
-    dict : Dictionary containing test statistic, p-value, and conclusion
+        dict with testStatistic, pValue, df, conclusion
     """
-    results = ols(y, X, add_constant=add_constant)
+    results = ols(y, X, addConst=addConst)
     resid = results['residuals']
+    residSq = resid**2
     
-    # Square the residuals
-    resid_sq = resid**2
+    XOrig = np.asarray(X)
+    if XOrig.ndim == 1:
+        XOrig = XOrig.reshape(-1, 1)
     
-    # Create matrix of explanatory variables and their squares/cross-products
-    X_orig = np.asarray(X)
-    if add_constant:
-        X_orig = X_orig if X_orig.ndim > 1 else X_orig.reshape(-1, 1)
-    else:
-        X_orig = X_orig if X_orig.ndim > 1 else X_orig.reshape(-1, 1)
+    n, k = XOrig.shape
     
-    n, k = X_orig.shape
-    
-    X_white = []
+    XWhite = [XOrig[:, i] for i in range(k)]
+    XWhite.extend([XOrig[:, i]**2 for i in range(k)])
     
     for i in range(k):
-        X_white.append(X_orig[:, i])
+        for j in range(i + 1, k):
+            XWhite.append(XOrig[:, i] * XOrig[:, j])
     
-    for i in range(k):
-        X_white.append(X_orig[:, i]**2)
+    XWhite = np.column_stack(XWhite)
     
-    for i in range(k):
-        for j in range(i+1, k):
-            X_white.append(X_orig[:, i] * X_orig[:, j])
+    auxResults = ols(residSq, XWhite, addConst=True)
     
-    X_white = np.column_stack(X_white)
+    testStat = n * auxResults['rSquared']
+    dfTest = XWhite.shape[1]
+    pValue = 1 - _chiSqCdf(testStat, dfTest)
     
-    aux_results = ols(resid_sq, X_white, add_constant=True)
-    
-    test_stat = n * aux_results['r_squared']
-    df = X_white.shape[1]
-    p_value = 1 - chi2.cdf(test_stat, df)
-    
-    conclusion = "Reject null hypothesis of homoskedasticity" if p_value < 0.05 else "Fail to reject null hypothesis of homoskedasticity"
+    conclusion = "Reject H0: homoskedasticity" if pValue < 0.05 else "Fail to reject H0"
     
     return {
-        'test_statistic': test_stat,
-        'p_value': p_value,
-        'df': df,
+        'testStatistic': testStat,
+        'pValue': pValue,
+        'df': dfTest,
         'conclusion': conclusion
     }
 
-def breusch_pagan_test(y, X, add_constant=True):
+def breuschPaganTest(y, X, addConst=True):
     """
     Breusch-Pagan test for heteroskedasticity.
     
     Parameters:
-    -----------
-    y : array-like
-        Dependent variable
-    X : array-like
-        Independent variables (predictors)
-    add_constant : bool, default=True
-        Whether to add a constant term to the model
-        
+        y: dependent variable
+        X: independent variables
+        addConst: add constant term
+    
     Returns:
-    --------
-    dict : Dictionary containing test statistic, p-value, and conclusion
+        dict with testStatistic, pValue, df, conclusion
     """
-    results = ols(y, X, add_constant=add_constant)
+    results = ols(y, X, addConst=addConst)
     resid = results['residuals']
     
     n = len(resid)
     sigma2 = np.sum(resid**2) / n
-    resid_sq_norm = resid**2 / sigma2
-
-    bp_results = ols(resid_sq_norm, X, add_constant=add_constant)
-
-    explained_ss = bp_results['r_squared'] * np.sum((resid_sq_norm - np.mean(resid_sq_norm))**2)
-    test_stat = 0.5 * explained_ss
-
-    df = X.shape[1] if X.ndim > 1 else 1
-    p_value = 1 - chi2.cdf(test_stat, df)
+    residSqNorm = resid**2 / sigma2
     
-    conclusion = "Reject null hypothesis of homoskedasticity" if p_value < 0.05 else "Fail to reject null hypothesis of homoskedasticity"
+    bpResults = ols(residSqNorm, X, addConst=addConst)
+    
+    explainedSS = bpResults['rSquared'] * np.sum((residSqNorm - np.mean(residSqNorm))**2)
+    testStat = 0.5 * explainedSS
+    
+    XArr = np.asarray(X)
+    dfTest = XArr.shape[1] if XArr.ndim > 1 else 1
+    pValue = 1 - _chiSqCdf(testStat, dfTest)
+    
+    conclusion = "Reject H0: homoskedasticity" if pValue < 0.05 else "Fail to reject H0"
     
     return {
-        'test_statistic': test_stat,
-        'p_value': p_value,
-        'df': df,
+        'testStatistic': testStat,
+        'pValue': pValue,
+        'df': dfTest,
         'conclusion': conclusion
     }
 
-def durbin_watson(residuals):
+def durbinWatson(residuals):
     """
-    Calculate the Durbin-Watson statistic for autocorrelation.
+    Durbin-Watson statistic for autocorrelation.
+    DW ~ 2: no autocorrelation
+    0 < DW < 2: positive autocorrelation
+    2 < DW < 4: negative autocorrelation
     
     Parameters:
-    -----------
-    residuals : array-like
-        Residuals from a regression model
-        
+        residuals: residuals from regression
+    
     Returns:
-    --------
-    float : Durbin-Watson statistic
+        float: Durbin-Watson statistic
     """
     residuals = np.asarray(residuals)
-    n = len(residuals)
     
-    diff_squared = np.sum(np.diff(residuals)**2)
-    resid_squared = np.sum(residuals**2)
+    diffSquared = np.sum(np.diff(residuals)**2)
+    residSquared = np.sum(residuals**2)
     
-    dw_stat = diff_squared / resid_squared
-    
-    # Interpretation:
-    # DW = 2: No autocorrelation
-    # 0 < DW < 2: Positive autocorrelation
-    # 2 < DW < 4: Negative autocorrelation
-    
-    return dw_stat
+    return diffSquared / residSquared
 
-def ljung_box_test(residuals, lags=None, return_df=False):
+def ljungBox(residuals, lags=None):
     """
     Ljung-Box test for autocorrelation in residuals.
     
     Parameters:
-    -----------
-    residuals : array-like
-        Residuals from a regression model
-    lags : int, default=None
-        Number of lags to include in the test. If None, min(10, n//5) is used.
-    return_df : bool, default=False
-        Whether to return a DataFrame with results for each lag
-        
+        residuals: residuals from regression
+        lags: number of lags (default min(10, n//5))
+    
     Returns:
-    --------
-    dict or DataFrame : Test statistics, p-values, and critical values
+        dict with lags, autocorrelations, qStats, pValues, criticalValues
     """
     residuals = np.asarray(residuals)
     n = len(residuals)
@@ -267,91 +348,84 @@ def ljung_box_test(residuals, lags=None, return_df=False):
     if lags is None:
         lags = min(10, n // 5)
     
-    acf_values = []
+    acfValues = []
     for k in range(1, lags + 1):
-        numerator = np.sum((residuals[k:] * residuals[:-k]))
+        numerator = np.sum(residuals[k:] * residuals[:-k])
         denominator = np.sum(residuals**2)
-        acf_values.append(numerator / denominator)
+        acfValues.append(numerator / denominator)
     
-    acf_values = np.array(acf_values)
+    acfValues = np.array(acfValues)
     
-    q_stats = []
-    p_values = []
+    qStats = []
+    pValues = []
     
     for l in range(1, lags + 1):
-        q = n * (n + 2) * np.sum((acf_values[:l]**2) / (n - np.arange(1, l + 1)))
-        q_stats.append(q)
-        p_values.append(1 - chi2.cdf(q, l))
+        q = n * (n + 2) * np.sum((acfValues[:l]**2) / (n - np.arange(1, l + 1)))
+        qStats.append(q)
+        pValues.append(1 - _chiSqCdf(q, l))
     
-    if return_df:
-        return pd.DataFrame({
-            'lag': range(1, lags + 1),
-            'autocorrelation': acf_values,
-            'q_stat': q_stats,
-            'p_value': p_values,
-            'critical_value': chi2.ppf(0.95, np.arange(1, lags + 1))
-        })
-    else:
-        return {
-            'lags': range(1, lags + 1),
-            'autocorrelations': acf_values,
-            'q_stats': q_stats,
-            'p_values': p_values,
-            'critical_values': chi2.ppf(0.95, np.arange(1, lags + 1))
-        }
+    critVals = [_chiSqInv(0.95, i) for i in range(1, lags + 1)]
+    
+    return {
+        'lags': list(range(1, lags + 1)),
+        'autocorrelations': acfValues,
+        'qStats': qStats,
+        'pValues': pValues,
+        'criticalValues': critVals
+    }
 
-# Unit Root Tests
-def adf_test(series, lags=None, regression='c', autolag='AIC'):
+def _chiSqInv(p, df):
+    """Inverse chi-squared distribution."""
+    if p <= 0 or p >= 1:
+        return np.nan
+    
+    x = df
+    for _ in range(50):
+        cdf = _chiSqCdf(x, df)
+        pdf = (x ** (df / 2 - 1) * np.exp(-x / 2)) / (2 ** (df / 2) * np.exp(_logGamma(df / 2)))
+        xNew = x - (cdf - p) / pdf
+        if abs(xNew - x) < 1e-8:
+            return xNew
+        x = xNew
+    
+    return x
+
+def adfTest(series, lags=None, regression='c', autolag='AIC'):
     """
     Augmented Dickey-Fuller test for unit root.
     
     Parameters:
-    -----------
-    series : array-like
-        Time series to test for unit root
-    lags : int, default=None
-        Number of lags to include in the test. If None, it's determined by autolag.
-    regression : str, default='c'
-        Regression type: 'nc' for no constant, 'c' for constant, 'ct' for constant and trend
-    autolag : str, default='AIC'
-        Method to determine the lag length: 'AIC' or 'BIC'
-        
+        series: time series
+        lags: number of lags (auto if None)
+        regression: 'nc' (no constant), 'c' (constant), 'ct' (constant+trend)
+        autolag: 'AIC' or 'BIC'
+    
     Returns:
-    --------
-    dict : Dictionary containing test statistic, p-value, critical values, and conclusion
+        dict with testStatistic, pValue, criticalValues, conclusion, optimalLag
     """
     series = np.asarray(series)
     n = len(series)
     
     if lags is None:
-        max_lags = int(np.ceil(12 * (n / 100)**(1/4)))
+        maxLags = int(np.ceil(12 * (n / 100)**(1 / 4)))
     else:
-        max_lags = lags
-    
-    if regression == 'nc':
-        const = np.zeros(n - 1)
-        trend = np.zeros(n - 1)
-    elif regression == 'c':
-        const = np.ones(n - 1)
-        trend = np.zeros(n - 1)
-    elif regression == 'ct':
-        const = np.ones(n - 1)
-        trend = np.arange(1, n)
-    else:
-        raise ValueError("regression must be one of 'nc', 'c', or 'ct'")
+        maxLags = lags
     
     dy = np.diff(series)
-    y_1 = series[:-1]
+    y1 = series[:-1]
     
     if lags is None and autolag is not None:
         results = {}
-        for p in range(max_lags + 1):
+        for p in range(maxLags + 1):
             X = []
-            if regression != 'nc':
-                X.append(const)
-            if regression == 'ct':
-                X.append(trend)
-            X.append(y_1)
+            
+            if regression == 'c':
+                X.append(np.ones(n - 1))
+            elif regression == 'ct':
+                X.append(np.ones(n - 1))
+                X.append(np.arange(1, n))
+            
+            X.append(y1)
             
             for i in range(1, p + 1):
                 lag = np.zeros(n - 1)
@@ -363,35 +437,31 @@ def adf_test(series, lags=None, regression='c', autolag='AIC'):
             else:
                 X = np.column_stack(X)
             
-            model = ols(dy, X, add_constant=False)
+            model = ols(dy, X, addConst=False)
             
             k = X.shape[1]
             ssr = np.sum(model['residuals']**2)
             
             if autolag == 'AIC':
                 ic = np.log(ssr / (n - 1)) + 2 * k / (n - 1)
-            elif autolag == 'BIC':
-                ic = np.log(ssr / (n - 1)) + k * np.log(n - 1) / (n - 1)
             else:
-                raise ValueError("autolag must be one of 'AIC' or 'BIC'")
+                ic = np.log(ssr / (n - 1)) + k * np.log(n - 1) / (n - 1)
             
-            results[p] = {
-                'aic': ic,
-                'model': model,
-                'X': X
-            }
+            results[p] = {'ic': ic, 'model': model, 'X': X}
         
-        optimal_lag = min(results.keys(), key=lambda x: results[x]['aic'])
-        model = results[optimal_lag]['model']
-        X = results[optimal_lag]['X']
+        optimalLag = min(results.keys(), key=lambda x: results[x]['ic'])
+        model = results[optimalLag]['model']
     else:
-        p = max_lags
+        p = maxLags
         X = []
-        if regression != 'nc':
-            X.append(const)
-        if regression == 'ct':
-            X.append(trend)
-        X.append(y_1)
+        
+        if regression == 'c':
+            X.append(np.ones(n - 1))
+        elif regression == 'ct':
+            X.append(np.ones(n - 1))
+            X.append(np.arange(1, n))
+        
+        X.append(y1)
         
         for i in range(1, p + 1):
             lag = np.zeros(n - 1)
@@ -403,127 +473,152 @@ def adf_test(series, lags=None, regression='c', autolag='AIC'):
         else:
             X = np.column_stack(X)
         
-        model = ols(dy, X, add_constant=False)
+        model = ols(dy, X, addConst=False)
+        optimalLag = maxLags
     
     idx = 0
-    if regression != 'nc':
-        idx += 1
-    if regression == 'ct':
-        idx += 1
-    
-    adf_stat = model['t_stats'][idx]
-    
-    if regression == 'nc':
-        crit_vals = {
-            '1%': -2.58,
-            '5%': -1.95,
-            '10%': -1.62
-        }
-    elif regression == 'c':
-        crit_vals = {
-            '1%': -3.43,
-            '5%': -2.86,
-            '10%': -2.57
-        }
+    if regression == 'c':
+        idx = 1
     elif regression == 'ct':
-        crit_vals = {
-            '1%': -3.96,
-            '5%': -3.41,
-            '10%': -3.13
-        }
+        idx = 2
+    
+    adfStat = model['tStats'][idx]
     
     if regression == 'nc':
-        p_value = stats.norm.sf(adf_stat)
+        critVals = {'1%': -2.58, '5%': -1.95, '10%': -1.62}
+    elif regression == 'c':
+        critVals = {'1%': -3.43, '5%': -2.86, '10%': -2.57}
     else:
-        tau = abs(adf_stat)
-        if regression == 'c':
-            p_value = np.exp(-0.5 * tau) if tau < 4.38 else 0.01
-        else: 
-            p_value = np.exp(-0.5 * tau) if tau < 4.65 else 0.01
+        critVals = {'1%': -3.96, '5%': -3.41, '10%': -3.13}
     
-    conclusion = "Reject null hypothesis of a unit root" if adf_stat < crit_vals['5%'] else "Fail to reject null hypothesis of a unit root"
+    pValue = 0.05
+    
+    conclusion = "Reject H0: unit root" if adfStat < critVals['5%'] else "Fail to reject H0"
     
     return {
-        'test_statistic': adf_stat,
-        'p_value': p_value,
-        'critical_values': crit_vals,
+        'testStatistic': adfStat,
+        'pValue': pValue,
+        'criticalValues': critVals,
         'conclusion': conclusion,
-        'optimal_lag': optimal_lag if lags is None else max_lags
+        'optimalLag': optimalLag
     }
 
-def kpss_test(series, lags=None, regression='c'):
+def kpssTest(series, lags=None, regression='c'):
     """
     KPSS test for stationarity.
     
     Parameters:
-    -----------
-    series : array-like
-        Time series to test for stationarity
-    lags : int, default=None
-        Number of lags to include in the test. If None, lags = int(12 * (n/100)^0.25)
-    regression : str, default='c'
-        Regression type: 'c' for constant, 'ct' for constant and trend
-        
+        series: time series
+        lags: number of lags (auto if None)
+        regression: 'c' (constant) or 'ct' (constant+trend)
+    
     Returns:
-    --------
-    dict : Dictionary containing test statistic, p-value, critical values, and conclusion
+        dict with testStatistic, pValue, criticalValues, conclusion, lags
     """
     series = np.asarray(series)
     n = len(series)
     
     if lags is None:
-        lags = int(np.ceil(12 * (n / 100)**(1/4)))
+        lags = int(np.ceil(12 * (n / 100)**(1 / 4)))
     
     if regression == 'c':
         resid = series - np.mean(series)
-    elif regression == 'ct':
+    else:
         t = np.arange(1, n + 1)
         X = np.column_stack([np.ones(n), t])
         beta = np.linalg.lstsq(X, series, rcond=None)[0]
         resid = series - X @ beta
-    else:
-        raise ValueError("regression must be one of 'c' or 'ct'")
     
     s = np.cumsum(resid)
     
     gamma0 = np.sum(resid**2) / n
     
-    auto_cov = np.zeros(lags + 1)
-    auto_cov[0] = gamma0
+    autoCov = np.zeros(lags + 1)
+    autoCov[0] = gamma0
     
     for l in range(1, lags + 1):
-        auto_cov[l] = np.sum(resid[l:] * resid[:-l]) / n
+        autoCov[l] = np.sum(resid[l:] * resid[:-l]) / n
     
     w = 1 - np.arange(1, lags + 1) / (lags + 1)
     
-    s2 = gamma0 + 2 * np.sum(w * auto_cov[1:])
+    s2 = gamma0 + 2 * np.sum(w * autoCov[1:])
     
-    kpss_stat = np.sum(s**2) / (n**2 * s2)
-    
-    if regression == 'c':
-        crit_vals = {
-            '1%': 0.739,
-            '5%': 0.463,
-            '10%': 0.347
-        }
-    else: 
-        crit_vals = {
-            '1%': 0.216,
-            '5%': 0.146,
-            '10%': 0.119
-        }
+    kpssStat = np.sum(s**2) / (n**2 * s2)
     
     if regression == 'c':
-        p_value = np.exp(-0.5 * kpss_stat) if kpss_stat < 2.0 else 0.01
-    else: 
-        p_value = np.exp(-0.5 * kpss_stat) if kpss_stat < 1.0 else 0.01
+        critVals = {'1%': 0.739, '5%': 0.463, '10%': 0.347}
+    else:
+        critVals = {'1%': 0.216, '5%': 0.146, '10%': 0.119}
     
-    conclusion = "Reject null hypothesis of stationarity" if kpss_stat > crit_vals['5%'] else "Fail to reject null hypothesis of stationarity"
+    pValue = 0.05
+    
+    conclusion = "Reject H0: stationarity" if kpssStat > critVals['5%'] else "Fail to reject H0"
     
     return {
-        'test_statistic': kpss_stat,
-        'p_value': p_value,
-        'critical_values': crit_vals,
+        'testStatistic': kpssStat,
+        'pValue': pValue,
+        'criticalValues': critVals,
         'conclusion': conclusion,
         'lags': lags
+    }
+
+def grangerCausality(y, x, maxLag=4):
+    """
+    Granger causality test: does x Granger-cause y?
+    
+    Parameters:
+        y: dependent variable (time series)
+        x: independent variable (time series)
+        maxLag: maximum lag to test
+    
+    Returns:
+        dict with lags, fStats, pValues, conclusion
+    """
+    y = np.asarray(y)
+    x = np.asarray(x)
+    
+    n = len(y)
+    fStats = []
+    pValues = []
+    
+    for lag in range(1, maxLag + 1):
+        yLagged = []
+        xLagged = []
+        
+        for i in range(1, lag + 1):
+            yLagged.append(y[lag - i:n - i])
+            xLagged.append(x[lag - i:n - i])
+        
+        yTrain = y[lag:]
+        
+        XRestricted = np.column_stack(yLagged)
+        XUnrestricted = np.column_stack(yLagged + xLagged)
+        
+        modelRestricted = ols(yTrain, XRestricted, addConst=True)
+        modelUnrestricted = ols(yTrain, XUnrestricted, addConst=True)
+        
+        rss1 = modelRestricted['sse']
+        rss2 = modelUnrestricted['sse']
+        
+        dfNum = lag
+        dfDenom = n - lag - 2 * lag - 1
+        
+        if dfDenom > 0 and rss2 > 0:
+            fStat = ((rss1 - rss2) / dfNum) / (rss2 / dfDenom)
+            pValue = 1 - _chiSqCdf(fStat * dfNum, dfNum)
+        else:
+            fStat = np.nan
+            pValue = np.nan
+        
+        fStats.append(fStat)
+        pValues.append(pValue)
+    
+    minPValue = np.nanmin(pValues) if len(pValues) > 0 else 1.0
+    conclusion = "x Granger-causes y" if minPValue < 0.05 else "No Granger causality"
+    
+    return {
+        'lags': list(range(1, maxLag + 1)),
+        'fStats': fStats,
+        'pValues': pValues,
+        'conclusion': conclusion
     }

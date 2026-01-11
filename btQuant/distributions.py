@@ -1,476 +1,475 @@
 import numpy as np
-import scipy.stats as stats
-from scipy.optimize import minimize
-from scipy.special import gamma
-from scipy.stats import norm, multivariate_normal
-from scipy.optimize import root_scalar
-from typing import Tuple, Dict
-import warnings
-import plotly.graph_objects as go
 
-def identify(data: np.ndarray, 
-             alpha: float = 0.05,
-             return_all: bool = False) -> Tuple[str, Dict]:
+def _normCdf(x):
+    """Standard normal CDF."""
+    return 0.5 * (1.0 + np.tanh(x / np.sqrt(2.0) * 0.7978845608))
+
+def _normPdf(x):
+    """Standard normal PDF."""
+    return np.exp(-0.5 * x**2) / np.sqrt(2 * np.pi)
+
+def _normPpf(p):
+    """Standard normal quantile function."""
+    if p <= 0 or p >= 1:
+        return np.nan
+    
+    if p < 0.5:
+        sign = -1
+        p = 1 - p
+    else:
+        sign = 1
+    
+    t = np.sqrt(-2 * np.log(1 - p))
+    c0, c1, c2 = 2.515517, 0.802853, 0.010328
+    d1, d2, d3 = 1.432788, 0.189269, 0.001308
+    x = t - (c0 + c1 * t + c2 * t**2) / (1 + d1 * t + d2 * t**2 + d3 * t**3)
+    
+    return sign * x
+
+def _chiSqCdf(x, df):
+    """Chi-squared CDF approximation."""
+    if x <= 0:
+        return 0.0
+    if df == 1:
+        return 2 * _normCdf(np.sqrt(x)) - 1
+    return _gammaInc(df / 2, x / 2)
+
+def _gammaInc(a, x):
+    """Incomplete gamma function."""
+    if x < 0 or a <= 0:
+        return 0.0
+    
+    if x < a + 1:
+        ap, delta, sumVal = a, 1.0 / a, 1.0 / a
+        for n in range(1, 100):
+            ap += 1
+            delta *= x / ap
+            sumVal += delta
+            if delta < sumVal * 1e-10:
+                break
+        return sumVal * np.exp(-x + a * np.log(x) - _logGamma(a))
+    else:
+        b, c, d, h = x + 1 - a, 1.0 / 1e-30, 1.0 / b, 1.0 / b
+        for i in range(1, 100):
+            an = -i * (i - a)
+            b += 2.0
+            d = an * d + b
+            if abs(d) < 1e-30:
+                d = 1e-30
+            c = b + an / c
+            if abs(c) < 1e-30:
+                c = 1e-30
+            d = 1.0 / d
+            delta = d * c
+            h *= delta
+            if abs(delta - 1.0) < 1e-10:
+                break
+        return 1.0 - h * np.exp(-x + a * np.log(x) - _logGamma(a))
+
+def _logGamma(x):
+    """Log gamma function."""
+    if x <= 0:
+        return np.inf
+    
+    cof = [76.18009172947146, -86.50532032941677, 24.01409824083091,
+           -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5]
+    
+    y = x
+    tmp = x + 5.5
+    tmp -= (x + 0.5) * np.log(tmp)
+    ser = 1.000000000190015
+    
+    for c in cof:
+        y += 1
+        ser += c / y
+    
+    return -tmp + np.log(2.5066282746310005 * ser / x)
+
+def fitNormal(data):
     """
-    Identify the best fitting distribution for the given data.
+    Fit normal distribution.
     
     Parameters:
-    -----------
-    data : np.ndarray
-        1D array of data to fit
-    alpha : float, default=0.05
-        Significance level for statistical tests
-    return_all : bool, default=False
-        If True, return results for all distributions tested
-        
+        data: array of observations
+    
     Returns:
-    --------
-    best_dist : str
-        Name of the best fitting distribution
-    results : dict
-        Dictionary containing detailed test results
+        dict with mu, sigma, logLikelihood
     """
-    data = np.asarray(data).flatten()
+    data = np.asarray(data)
+    mu = np.mean(data)
+    sigma = np.std(data, ddof=1)
     
-    distributions = [
-        'norm',      # Normal/Gaussian distribution
-        't',         # Student's t-distribution
-        'laplace',   # Laplace distribution (double exponential)
-        'logistic',  # Logistic distribution
-        'cauchy',    # Cauchy distribution
-        'gamma',     # Gamma distribution
-        'lognorm',   # Log-normal distribution
-        'expon',     # Exponential distribution
-        'weibull_min', # Weibull distribution
-        'beta',      # Beta distribution
-        'uniform',   # Uniform distribution
-        'chi2',      # Chi-squared distribution
-        'f',         # F distribution
-        'genextreme' # Generalized extreme value distribution
-    ]
+    logLik = -0.5 * len(data) * np.log(2 * np.pi * sigma**2) - np.sum((data - mu)**2) / (2 * sigma**2)
     
-    results = {}
-    
-    with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', category=RuntimeWarning)
-        
-        for dist_name in distributions:
-            try:
-                distribution = getattr(stats, dist_name)
-                
-                params = distribution.fit(data)
-                ks_statistic, ks_pvalue = stats.kstest(data, dist_name, params)
-                
-                try:
-                    ad_result = stats.anderson(data, dist_name)
-                    ad_statistic = ad_result.statistic
-                    ad_critical_values = ad_result.critical_values
-                    ad_pass = ad_statistic < ad_critical_values[2]
-                except:
-                    ad_statistic = np.nan
-                    ad_pass = np.nan
-                
-                loglik = np.sum(distribution.logpdf(data, *params))
-                k = len(params)
-                n = len(data)
-                aic = 2 * k - 2 * loglik
-                bic = k * np.log(n) - 2 * loglik
-                
-                mean_empirical = np.mean(data)
-                var_empirical = np.var(data)
-                skew_empirical = stats.skew(data)
-                kurt_empirical = stats.kurtosis(data)
-                
-                try:
-                    mean_theoretical = distribution.mean(*params)
-                except:
-                    mean_theoretical = np.nan
-                    
-                try:
-                    var_theoretical = distribution.var(*params)
-                except:
-                    var_theoretical = np.nan
-                    
-                try:
-                    skew_theoretical = distribution.stats(*params, moments='s')
-                except:
-                    skew_theoretical = np.nan
-                    
-                try:
-                    kurt_theoretical = distribution.stats(*params, moments='k')
-                except:
-                    kurt_theoretical = np.nan
-                
-                results[dist_name] = {
-                    'params': params,
-                    'ks_statistic': ks_statistic,
-                    'ks_pvalue': ks_pvalue,
-                    'ad_statistic': ad_statistic,
-                    'aic': aic,
-                    'bic': bic,
-                    'moment_errors': {
-                        'mean': abs(mean_empirical - mean_theoretical) if not np.isnan(mean_theoretical) else np.inf,
-                        'var': abs(var_empirical - var_theoretical) if not np.isnan(var_theoretical) else np.inf,
-                        'skew': abs(skew_empirical - skew_theoretical) if not np.isnan(skew_theoretical) else np.inf,
-                        'kurt': abs(kurt_empirical - kurt_theoretical) if not np.isnan(kurt_theoretical) else np.inf
-                    },
-                    'pass_ks': ks_pvalue > alpha,
-                    'pass_ad': ad_pass
-                }
-                
-            except Exception as e:
-                results[dist_name] = {'error': str(e)}
-    
-    valid_distributions = {k: v for k, v in results.items() if 'error' not in v}
-    
-    if not valid_distributions:
-        return "no_valid_fit", results
-    
-    for dist_name, result in valid_distributions.items():
-        score = 0
-        
-        if result['pass_ks']:
-            score += 10
-        
-        if result['pass_ad'] is True:
-            score += 10
-            
-        score += result['ks_pvalue'] * 5
-        
-        valid_aic_values = [d['aic'] for d in valid_distributions.values() 
-                          if 'aic' in d and np.isfinite(d['aic'])]
-        
-        if valid_aic_values:
-            max_aic = max(valid_aic_values)
-            min_aic = min(valid_aic_values)
-            aic_range = max_aic - min_aic
-            
-            if aic_range > 0 and np.isfinite(result['aic']):
-                aic_score = (max_aic - result['aic']) / aic_range
-                score += aic_score * 5
-        
-        moment_error_sum = sum(error for error in result['moment_errors'].values() 
-                             if np.isfinite(error))
-        
-        if moment_error_sum:
-            score -= moment_error_sum
-        
-        result['score'] = score
-    
-    scored_distributions = {k: v for k, v in valid_distributions.items() 
-                         if 'score' in v and np.isfinite(v['score'])}
-    
-    if not scored_distributions:
-        best_dist = max(valid_distributions.items(), 
-                      key=lambda x: x[1]['ks_pvalue'] if np.isfinite(x[1]['ks_pvalue']) else -np.inf)[0]
-    else:
-        best_dist = max(scored_distributions.items(), key=lambda x: x[1]['score'])[0]
-    
-    if return_all:
-        return best_dist, results
-    else:
-        return best_dist, {best_dist: results[best_dist]}
-    
-def moments(data: np.ndarray) -> Dict[str, float]:
-    """
-    Estimate empirical moments of a dataset.
+    return {'mu': mu, 'sigma': sigma, 'logLikelihood': logLik}
 
+def fitLognormal(data):
+    """
+    Fit lognormal distribution.
+    
     Parameters:
-    -----------
-    data : np.ndarray
-        1D array of data.
-
+        data: array of positive observations
+    
     Returns:
-    --------
-    Dict[str, float]
-        Dictionary containing mean, variance, skewness, and kurtosis.
+        dict with mu, sigma (of log), logLikelihood
     """
-    data = np.asarray(data).flatten()
+    data = np.asarray(data)
+    data = data[data > 0]
+    
+    logData = np.log(data)
+    mu = np.mean(logData)
+    sigma = np.std(logData, ddof=1)
+    
+    logLik = -0.5 * len(data) * np.log(2 * np.pi * sigma**2) - np.sum((logData - mu)**2) / (2 * sigma**2)
+    logLik -= np.sum(np.log(data))
+    
+    return {'mu': mu, 'sigma': sigma, 'logLikelihood': logLik}
 
+def fitExponential(data):
+    """
+    Fit exponential distribution.
+    
+    Parameters:
+        data: array of positive observations
+    
+    Returns:
+        dict with lambda (rate), logLikelihood
+    """
+    data = np.asarray(data)
+    data = data[data > 0]
+    
+    lambdaParam = 1.0 / np.mean(data)
+    
+    logLik = len(data) * np.log(lambdaParam) - lambdaParam * np.sum(data)
+    
+    return {'lambda': lambdaParam, 'logLikelihood': logLik}
+
+def fitGamma(data, maxIter=100):
+    """
+    Fit gamma distribution using method of moments.
+    
+    Parameters:
+        data: array of positive observations
+        maxIter: maximum iterations
+    
+    Returns:
+        dict with alpha (shape), beta (rate), logLikelihood
+    """
+    data = np.asarray(data)
+    data = data[data > 0]
+    
+    meanData = np.mean(data)
+    varData = np.var(data, ddof=1)
+    
+    alpha = meanData**2 / varData
+    beta = meanData / varData
+    
+    logLik = len(data) * (alpha * np.log(beta) - _logGamma(alpha)) + (alpha - 1) * np.sum(np.log(data)) - beta * np.sum(data)
+    
+    return {'alpha': alpha, 'beta': beta, 'logLikelihood': logLik}
+
+def fitBeta(data, maxIter=100):
+    """
+    Fit beta distribution using method of moments.
+    
+    Parameters:
+        data: array of observations in (0, 1)
+        maxIter: maximum iterations
+    
+    Returns:
+        dict with alpha, beta parameters, logLikelihood
+    """
+    data = np.asarray(data)
+    data = data[(data > 0) & (data < 1)]
+    
+    meanData = np.mean(data)
+    varData = np.var(data, ddof=1)
+    
+    commonTerm = meanData * (1 - meanData) / varData - 1
+    alpha = meanData * commonTerm
+    beta = (1 - meanData) * commonTerm
+    
+    alpha = max(alpha, 0.1)
+    beta = max(beta, 0.1)
+    
+    logLik = len(data) * (_logGamma(alpha + beta) - _logGamma(alpha) - _logGamma(beta))
+    logLik += (alpha - 1) * np.sum(np.log(data)) + (beta - 1) * np.sum(np.log(1 - data))
+    
+    return {'alpha': alpha, 'beta': beta, 'logLikelihood': logLik}
+
+def fitT(data, maxIter=50):
+    """
+    Fit Student's t distribution.
+    
+    Parameters:
+        data: array of observations
+        maxIter: maximum iterations
+    
+    Returns:
+        dict with df (degrees of freedom), mu, sigma, logLikelihood
+    """
+    data = np.asarray(data)
+    
+    mu = np.median(data)
+    sigma = np.std(data, ddof=1)
+    
+    kurt = _kurtosis(data)
+    if kurt > 0:
+        df = 6.0 / kurt + 4
+    else:
+        df = 10.0
+    
+    df = max(df, 2.5)
+    
+    logLik = 0.0
+    
+    return {'df': df, 'mu': mu, 'sigma': sigma, 'logLikelihood': logLik}
+
+def _kurtosis(x):
+    """Excess kurtosis."""
+    n = len(x)
+    mean = np.mean(x)
+    m2 = np.sum((x - mean)**2) / n
+    m4 = np.sum((x - mean)**4) / n
+    return m4 / (m2**2 + 1e-10) - 3
+
+def _skewness(x):
+    """Skewness."""
+    n = len(x)
+    mean = np.mean(x)
+    m2 = np.sum((x - mean)**2) / n
+    m3 = np.sum((x - mean)**3) / n
+    return m3 / (m2**1.5 + 1e-10)
+
+def moments(data):
+    """
+    Calculate distribution moments.
+    
+    Parameters:
+        data: array of observations
+    
+    Returns:
+        dict with mean, variance, skewness, kurtosis
+    """
+    data = np.asarray(data)
+    
     return {
         'mean': np.mean(data),
-        'variance': np.var(data),
-        'skewness': stats.skew(data),
-        'kurtosis': stats.kurtosis(data)
+        'variance': np.var(data, ddof=1),
+        'skewness': _skewness(data),
+        'kurtosis': _kurtosis(data)
     }
 
-def qq_plot(data: np.ndarray, dist_name: str):
+def ksTest(data, distName='normal', params=None):
     """
-    Generate an interactive Q-Q plot using Plotly to visually assess fit to a specified distribution.
-
-    Parameters:
-    -----------
-    data : np.ndarray
-        1D array of data.
+    Kolmogorov-Smirnov test for distribution fit.
     
-    dist_name : str
-        Name of the distribution to compare to (must be in scipy.stats).
-    """
-    data = np.asarray(data).flatten()
+    Parameters:
+        data: array of observations
+        distName: 'normal', 'lognormal', 'exponential'
+        params: dict of distribution parameters (if None, estimated)
     
-    try:
-        dist = getattr(stats, dist_name)
-        params = dist.fit(data)
-
-        sorted_data = np.sort(data)
-        n = len(sorted_data)
-        
-        probs = (np.arange(1, n + 1) - 0.5) / n
-        theoretical_quants = dist.ppf(probs, *params)
-
-        min_val = min(np.min(theoretical_quants), np.min(sorted_data))
-        max_val = max(np.max(theoretical_quants), np.max(sorted_data))
-
-        fig = go.Figure()
-
-        fig.add_trace(go.Scatter(
-            x=theoretical_quants,
-            y=sorted_data,
-            mode='markers',
-            name='Quantiles',
-            marker=dict(color='blue', size=6)
-        ))
-
-        fig.add_trace(go.Scatter(
-            x=[min_val, max_val],
-            y=[min_val, max_val],
-            mode='lines',
-            name='45° Reference Line',
-            line=dict(color='red', dash='dash')
-        ))
-
-        fig.update_layout(
-            title=f"Q-Q Plot: Data vs {dist_name}",
-            xaxis_title="Theoretical Quantiles",
-            yaxis_title="Empirical Quantiles",
-            template="plotly_white",
-            showlegend=True
-        )
-
-        fig.show()
-
-    except Exception as e:
-        print(f"Error generating Q-Q plot for {dist_name}: {e}")
-
-def pp_plot(data: np.ndarray, dist_name: str):
-    """
-    Generate an interactive P-P plot using Plotly to visually assess how well a distribution fits the data.
-
-    Parameters:
-    -----------
-    data : np.ndarray
-        1D array of data.
-
-    dist_name : str
-        Name of the distribution to compare to (must exist in scipy.stats).
-    """
-    data = np.asarray(data).flatten()
-
-    try:
-        dist = getattr(stats, dist_name)
-        params = dist.fit(data)
-
-        sorted_data = np.sort(data)
-        n = len(sorted_data)
-
-        empirical_probs = np.arange(1, n + 1) / (n + 1)
-        theoretical_probs = dist.cdf(sorted_data, *params)
-
-        fig = go.Figure()
-
-        fig.add_trace(go.Scatter(
-            x=theoretical_probs,
-            y=empirical_probs,
-            mode='markers',
-            name='P-P Points',
-            marker=dict(color='green', size=6)
-        ))
-
-        fig.add_trace(go.Scatter(
-            x=[0, 1],
-            y=[0, 1],
-            mode='lines',
-            name='45° Reference Line',
-            line=dict(color='red', dash='dash')
-        ))
-
-        fig.update_layout(
-            title=f"P-P Plot: Data vs {dist_name}",
-            xaxis_title="Theoretical CDF",
-            yaxis_title="Empirical CDF",
-            template="plotly_white",
-            showlegend=True
-        )
-
-        fig.show()
-
-    except Exception as e:
-        print(f"Error generating P-P plot for {dist_name}: {e}")
-
-def goodness_of_fit_tests(data: np.ndarray) -> Dict[str, Dict[str, float]]:
-    """
-    Perform additional goodness-of-fit tests on the data.
-
-    Tests included:
-    - Shapiro-Wilk
-    - Jarque-Bera
-    - D'Agostino's K²
-
-    Parameters:
-    -----------
-    data : np.ndarray
-        1D array of data to test for normality.
-
     Returns:
-    --------
-    results : dict
-        Dictionary with test statistics and p-values.
+        dict with statistic, pValue (approximate)
     """
-    data = np.asarray(data).flatten()
-    results = {}
-
-    ## Shapiro-Wilk Test
-    try:
-        stat, pval = stats.shapiro(data)
-        results['Shapiro-Wilk'] = {'statistic': stat, 'p_value': pval}
-    except Exception as e:
-        results['Shapiro-Wilk'] = {'error': str(e)}
-
-    ## Jarque-Bera Test
-    try:
-        stat, pval = stats.jarque_bera(data)
-        results['Jarque-Bera'] = {'statistic': stat, 'p_value': pval}
-    except Exception as e:
-        results['Jarque-Bera'] = {'error': str(e)}
-
-    ## D’Agostino’s K² Test
-    try:
-        stat, pval = stats.normaltest(data)
-        results["D'Agostino K²"] = {'statistic': stat, 'p_value': pval}
-    except Exception as e:
-        results["D'Agostino K²"] = {'error': str(e)}
-
-    return results
-
-
-def block_maxima_fit(data: np.ndarray, block_size: int = 50) -> Dict[str, object]:
-    """
-    Fit a Generalized Extreme Value (GEV) distribution using the Block Maxima method,
-    using pure NumPy and manual MLE optimization.
-
-    Parameters:
-    -----------
-    data : np.ndarray
-        1D array of observations (e.g., returns, prices).
-    block_size : int, default=50
-        Number of observations per block to extract maxima from.
-
-    Returns:
-    --------
-    results : dict
-        Dictionary containing GEV parameters, log-likelihood, AIC, and BIC.
-    """
-
-    def gev_log_likelihood(params, data):
-        c, loc, scale = params
-        if scale <= 0:
-            return np.inf
-        z = (data - loc) / scale
-        if c == 0:
-            logpdf = -z - np.exp(-z) - np.log(scale)
+    data = np.asarray(data)
+    n = len(data)
+    sortedData = np.sort(data)
+    
+    if params is None:
+        if distName == 'normal':
+            params = fitNormal(data)
+        elif distName == 'lognormal':
+            params = fitLognormal(data)
+        elif distName == 'exponential':
+            params = fitExponential(data)
         else:
-            t = 1 + c * z
-            if np.any(t <= 0):
-                return np.inf
-            logpdf = -((1 + 1/c) * np.log(t)) - t**(-1/c) - np.log(scale)
-        return -np.sum(logpdf)
+            raise ValueError("Unknown distribution")
     
-    data = np.asarray(data).flatten()
-    n_blocks = len(data) // block_size
+    empiricalCdf = np.arange(1, n + 1) / n
+    
+    if distName == 'normal':
+        theoreticalCdf = _normCdf((sortedData - params['mu']) / params['sigma'])
+    elif distName == 'lognormal':
+        theoreticalCdf = _normCdf((np.log(sortedData) - params['mu']) / params['sigma'])
+    elif distName == 'exponential':
+        theoreticalCdf = 1 - np.exp(-params['lambda'] * sortedData)
+    else:
+        raise ValueError("Unknown distribution")
+    
+    dPlus = np.max(empiricalCdf - theoreticalCdf)
+    dMinus = np.max(theoreticalCdf - (empiricalCdf - 1 / n))
+    
+    statistic = max(dPlus, dMinus)
+    
+    pValue = np.exp(-2 * n * statistic**2)
+    
+    return {'statistic': statistic, 'pValue': pValue}
 
-    if n_blocks < 2:
-        raise ValueError("Not enough data to form multiple blocks. Increase data size or reduce block_size.")
-
-    blocks = data[:n_blocks * block_size].reshape(n_blocks, block_size)
-    block_maxima = blocks.max(axis=1)
-
-    loc_init = np.mean(block_maxima)
-    scale_init = np.std(block_maxima)
-    shape_init = 0.1
-
-    bounds = [(-1, 1), (None, None), (1e-5, None)]  # Shape, loc, scale bounds
-    result = minimize(gev_log_likelihood, x0=[shape_init, loc_init, scale_init],
-                      args=(block_maxima,), bounds=bounds)
-
-    if not result.success:
-        raise RuntimeError("GEV parameter estimation failed: " + result.message)
-
-    c, loc, scale = result.x
-    loglik = -result.fun
-    k = 3
-    n = len(block_maxima)
-    aic = 2 * k - 2 * loglik
-    bic = k * np.log(n) - 2 * loglik
-
-    return {
-        'params': {'shape': c, 'loc': loc, 'scale': scale},
-        'log_likelihood': loglik,
-        'aic': aic,
-        'bic': bic,
-        'n_blocks': n_blocks,
-        'block_maxima': block_maxima
-    }
-
-def kl_divergence(p: np.ndarray, q: np.ndarray) -> float:
+def adTest(data, distName='normal'):
     """
-    Calculate the Kullback-Leibler divergence D_KL(p || q) between two discrete probability distributions.
-
+    Anderson-Darling test for normality.
+    
     Parameters:
-    -----------
-    p : np.ndarray
-        First probability distribution (true distribution).
-    q : np.ndarray
-        Second probability distribution (approximate distribution).
-
+        data: array of observations
+        distName: currently only 'normal' supported
+    
     Returns:
-    --------
-    float
-        KL divergence value. Returns np.inf if q has zero probability where p > 0.
+        dict with statistic, critical values
     """
-    p = np.asarray(p, dtype=np.float64)
-    q = np.asarray(q, dtype=np.float64)
+    data = np.asarray(data)
+    n = len(data)
+    
+    if distName != 'normal':
+        raise ValueError("Only normal distribution currently supported")
+    
+    mean = np.mean(data)
+    std = np.std(data, ddof=1)
+    
+    z = (data - mean) / std
+    z = np.sort(z)
+    
+    i = np.arange(1, n + 1)
+    cdf = _normCdf(z)
+    
+    S = -n - np.sum((2 * i - 1) * (np.log(cdf) + np.log(1 - cdf[::-1]))) / n
+    
+    criticalValues = {
+        '15%': 0.576,
+        '10%': 0.656,
+        '5%': 0.787,
+        '2.5%': 0.918,
+        '1%': 1.092
+    }
+    
+    return {'statistic': S, 'criticalValues': criticalValues}
 
+def klDivergence(p, q):
+    """
+    Kullback-Leibler divergence.
+    
+    Parameters:
+        p: true distribution (probabilities)
+        q: approximate distribution (probabilities)
+    
+    Returns:
+        KL divergence
+    """
+    p = np.asarray(p)
+    q = np.asarray(q)
+    
     p = p / np.sum(p)
     q = q / np.sum(q)
-
-    epsilon = 1e-12
-    p = np.clip(p, epsilon, 1)
-    q = np.clip(q, epsilon, 1)
-
+    
+    p = np.clip(p, 1e-12, 1)
+    q = np.clip(q, 1e-12, 1)
+    
     return np.sum(p * np.log(p / q))
 
-def js_divergence(p: np.ndarray, q: np.ndarray) -> float:
+def jsDivergence(p, q):
     """
-    Calculate the Jensen-Shannon divergence between two discrete probability distributions.
-
+    Jensen-Shannon divergence.
+    
     Parameters:
-    -----------
-    p : np.ndarray
-        First probability distribution.
-    q : np.ndarray
-        Second probability distribution.
-
+        p: first distribution
+        q: second distribution
+    
     Returns:
-    --------
-    float
-        Jensen-Shannon divergence (symmetric, bounded between 0 and 1).
+        JS divergence
     """
-    p = np.asarray(p, dtype=np.float64)
-    q = np.asarray(q, dtype=np.float64)
-
+    p = np.asarray(p)
+    q = np.asarray(q)
+    
     p = p / np.sum(p)
     q = q / np.sum(q)
-
+    
     m = 0.5 * (p + q)
+    
+    return 0.5 * (klDivergence(p, m) + klDivergence(q, m))
 
-    return 0.5 * (kl_divergence(p, m) + kl_divergence(q, m))
+def fitMixture(data, nComponents=2, maxIter=100):
+    """
+    Fit Gaussian mixture model using EM algorithm.
+    
+    Parameters:
+        data: array of observations
+        nComponents: number of mixture components
+        maxIter: maximum iterations
+    
+    Returns:
+        dict with means, sigmas, weights
+    """
+    data = np.asarray(data).reshape(-1, 1)
+    n = len(data)
+    
+    means = np.linspace(np.min(data), np.max(data), nComponents).reshape(-1, 1)
+    sigmas = np.ones((nComponents, 1)) * np.std(data)
+    weights = np.ones(nComponents) / nComponents
+    
+    for iteration in range(maxIter):
+        responsibilities = np.zeros((n, nComponents))
+        
+        for k in range(nComponents):
+            diff = data - means[k]
+            responsibilities[:, k] = (weights[k] * 
+                                     np.exp(-0.5 * (diff / sigmas[k])**2).flatten() / 
+                                     (sigmas[k] * np.sqrt(2 * np.pi)))
+        
+        responsibilities /= (np.sum(responsibilities, axis=1, keepdims=True) + 1e-10)
+        
+        nK = np.sum(responsibilities, axis=0)
+        
+        for k in range(nComponents):
+            means[k] = np.sum(responsibilities[:, k:k+1] * data, axis=0) / (nK[k] + 1e-10)
+            diff = data - means[k]
+            sigmas[k] = np.sqrt(np.sum(responsibilities[:, k:k+1] * diff**2, axis=0) / (nK[k] + 1e-10))
+            weights[k] = nK[k] / n
+    
+    return {
+        'means': means.flatten(),
+        'sigmas': sigmas.flatten(),
+        'weights': weights
+    }
+
+def quantile(data, q):
+    """
+    Calculate quantile.
+    
+    Parameters:
+        data: array of observations
+        q: quantile level (0 to 1)
+    
+    Returns:
+        quantile value
+    """
+    data = np.asarray(data)
+    return np.percentile(data, q * 100)
+
+def qqPlot(data, distName='normal'):
+    """
+    Generate Q-Q plot data.
+    
+    Parameters:
+        data: array of observations
+        distName: reference distribution
+    
+    Returns:
+        dict with theoretical and empirical quantiles
+    """
+    data = np.asarray(data)
+    n = len(data)
+    sortedData = np.sort(data)
+    
+    probabilities = (np.arange(1, n + 1) - 0.5) / n
+    
+    if distName == 'normal':
+        mean = np.mean(data)
+        std = np.std(data, ddof=1)
+        theoreticalQuantiles = mean + std * np.array([_normPpf(p) for p in probabilities])
+    else:
+        raise ValueError("Only normal distribution currently supported")
+    
+    return {
+        'theoretical': theoreticalQuantiles,
+        'empirical': sortedData
+    }

@@ -1,174 +1,407 @@
 import numpy as np
-from scipy.optimize import minimize
 
-def black_litterman(cov_matrix, pi, P, Q, tau=0.05):
+def _minimize(func, x0, bounds=None, maxIter=1000):
+    """Simple gradient-free optimization using pattern search."""
+    x = np.array(x0, dtype=float)
+    n = len(x)
+    
+    if bounds is None:
+        bounds = [(-np.inf, np.inf)] * n
+    
+    stepSize = 0.1
+    minStep = 1e-8
+    bestF = func(x)
+    
+    for iteration in range(maxIter):
+        improved = False
+        
+        for i in range(n):
+            xTry = x.copy()
+            xTry[i] += stepSize
+            xTry[i] = np.clip(xTry[i], bounds[i][0], bounds[i][1])
+            fTry = func(xTry)
+            
+            if fTry < bestF:
+                x = xTry
+                bestF = fTry
+                improved = True
+                continue
+            
+            xTry = x.copy()
+            xTry[i] -= stepSize
+            xTry[i] = np.clip(xTry[i], bounds[i][0], bounds[i][1])
+            fTry = func(xTry)
+            
+            if fTry < bestF:
+                x = xTry
+                bestF = fTry
+                improved = True
+        
+        if not improved:
+            stepSize *= 0.5
+            if stepSize < minStep:
+                break
+    
+    return x
+
+def blackLitterman(covMatrix, pi, P, Q, tau=0.05):
     """
     Black-Litterman model for portfolio optimization.
     
-    :param cov_matrix: Covariance matrix of asset returns
-    :param pi: Equilibrium (market-implied) returns vector
-    :param P: Matrix of views (rows are individual views, columns are assets)
-    :param Q: Vector of view returns (the magnitudes of views for each view in P)
-    :param tau: Scalar representing uncertainty in the prior (usually 0.05)
-    :return: Adjusted expected returns (Black-Litterman posterior)
+    Parameters:
+        covMatrix: covariance matrix of returns
+        pi: equilibrium (market-implied) returns
+        P: views matrix (rows=views, cols=assets)
+        Q: view returns vector
+        tau: prior uncertainty (default 0.05)
+    
+    Returns:
+        adjusted expected returns
     """
-    tau_cov = tau * cov_matrix
+    tauCov = tau * covMatrix
     
-    M_inverse = np.linalg.inv(np.linalg.inv(tau_cov) + np.dot(P.T, np.dot(np.linalg.inv(np.dot(P, tau_cov).dot(P.T)), P)))
-    adjusted_returns = np.dot(M_inverse, np.dot(np.linalg.inv(tau_cov), pi) + np.dot(P.T, np.linalg.inv(np.dot(P, tau_cov).dot(P.T))).dot(Q))
+    PtauCovPt = P @ tauCov @ P.T
+    PtauCovPtInv = np.linalg.inv(PtauCovPt)
     
-    return adjusted_returns
+    tauCovInv = np.linalg.inv(tauCov)
+    
+    MInv = np.linalg.inv(tauCovInv + P.T @ PtauCovPtInv @ P)
+    adjustedReturns = MInv @ (tauCovInv @ pi + P.T @ PtauCovPtInv @ Q)
+    
+    return adjustedReturns
 
-def mean_variance_optimization(expected_returns, cov_matrix, risk_aversion=0.5, constraints=None):
+def meanVariance(expectedReturns, covMatrix, riskAversion=0.5):
     """
-    Mean-Variance Optimization for portfolio selection.
+    Mean-variance optimization.
     
-    :param expected_returns: Expected returns for each asset
-    :param cov_matrix: Covariance matrix of asset returns
-    :param risk_aversion: Risk-aversion parameter (higher value indicates more risk aversion)
-    :param constraints: Constraints for optimization (e.g., asset weight bounds, sector constraints)
-    :return: Optimal portfolio weights
+    Parameters:
+        expectedReturns: expected returns for each asset
+        covMatrix: covariance matrix
+        riskAversion: risk aversion parameter (higher = more risk averse)
+    
+    Returns:
+        optimal portfolio weights
     """
-    num_assets = len(expected_returns)
-    initial_weights = np.ones(num_assets) / num_assets 
+    nAssets = len(expectedReturns)
     
     def objective(weights):
-        portfolio_return = np.dot(weights, expected_returns)
-        portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
-        return -portfolio_return / portfolio_volatility
+        portReturn = weights @ expectedReturns
+        portVol = np.sqrt(weights @ covMatrix @ weights)
+        return -portReturn / portVol
     
-    bounds = [(0, 1) for _ in range(num_assets)]
-    if constraints:
-        ## Additional constraints like sector or liquidity limits can be added here in future updates
-        pass
+    initialWeights = np.ones(nAssets) / nAssets
+    bounds = [(0, 1) for _ in range(nAssets)]
     
-    result = minimize(objective, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
+    bestWeights = _minimize(objective, initialWeights, bounds=bounds)
     
-    return result.x
+    bestWeights = bestWeights / np.sum(bestWeights)
+    
+    return bestWeights
 
-def minimum_variance(cov_matrix):
+def minVariance(covMatrix):
     """
-    Minimum Variance Portfolio optimization.
+    Minimum variance portfolio.
     
-    :param cov_matrix: Covariance matrix of asset returns
-    :return: Weights of the Minimum Variance Portfolio
+    Parameters:
+        covMatrix: covariance matrix
+    
+    Returns:
+        minimum variance portfolio weights
     """
-    num_assets = len(cov_matrix)
-    constraints = ({'type': 'eq', 'fun': lambda w: np.sum(w) - 1})
+    nAssets = len(covMatrix)
     
     def objective(weights):
-        return np.dot(weights.T, np.dot(cov_matrix, weights))
+        return weights @ covMatrix @ weights
     
-    bounds = [(0, 1) for _ in range(num_assets)]
+    initialWeights = np.ones(nAssets) / nAssets
+    bounds = [(0, 1) for _ in range(nAssets)]
     
-    initial_weights = np.ones(num_assets) / num_assets
-    result = minimize(objective, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
+    bestWeights = _minimize(objective, initialWeights, bounds=bounds)
     
-    return result.x
+    bestWeights = bestWeights / np.sum(bestWeights)
+    
+    return bestWeights
 
-def risk_parity(cov_matrix):
+def riskParity(covMatrix):
     """
-    Risk Parity Portfolio optimization.
+    Risk parity portfolio optimization.
     
-    :param cov_matrix: Covariance matrix of asset returns
-    :return: Weights of the Risk Parity Portfolio
+    Parameters:
+        covMatrix: covariance matrix
+    
+    Returns:
+        risk parity portfolio weights
     """
-    num_assets = len(cov_matrix)
+    nAssets = len(covMatrix)
     
     def objective(weights):
-        portfolio_variance = np.dot(weights.T, np.dot(cov_matrix, weights))
-        marginal_risks = np.dot(cov_matrix, weights)
-        risk_contributions = weights * marginal_risks / portfolio_variance
-        return np.sum((risk_contributions - 1/num_assets) ** 2)
+        portVar = weights @ covMatrix @ weights
+        marginalRisks = covMatrix @ weights
+        riskContribs = weights * marginalRisks / (portVar + 1e-10)
+        target = 1.0 / nAssets
+        return np.sum((riskContribs - target)**2)
     
-    constraints = ({'type': 'eq', 'fun': lambda w: np.sum(w) - 1})
+    initialWeights = np.ones(nAssets) / nAssets
+    bounds = [(0, 1) for _ in range(nAssets)]
     
-    bounds = [(0, 1) for _ in range(num_assets)]
+    bestWeights = _minimize(objective, initialWeights, bounds=bounds)
     
-    initial_weights = np.ones(num_assets) / num_assets
-    result = minimize(objective, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
+    bestWeights = bestWeights / np.sum(bestWeights)
     
-    return result.x
+    return bestWeights
 
-def equal_weight(num_assets):
+def equalWeight(nAssets):
     """
-    Equal Weight Portfolio optimization.
+    Equal weight portfolio.
     
-    :param num_assets: Number of assets in the portfolio
-    :return: Weights of the Equal Weight Portfolio
+    Parameters:
+        nAssets: number of assets
+    
+    Returns:
+        equal weight portfolio weights
     """
-    return np.ones(num_assets) / num_assets
+    return np.ones(nAssets) / nAssets
 
-def maximum_diversification(cov_matrix):
+def maxDiversification(covMatrix):
     """
-    Maximum Diversification Portfolio optimization.
+    Maximum diversification portfolio.
     
-    :param cov_matrix: Covariance matrix of asset returns
-    :return: Weights of the Maximum Diversification Portfolio
+    Parameters:
+        covMatrix: covariance matrix
+    
+    Returns:
+        maximum diversification portfolio weights
     """
-    num_assets = len(cov_matrix)
+    nAssets = len(covMatrix)
+    
+    volatilities = np.sqrt(np.diag(covMatrix))
     
     def objective(weights):
-        portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
-        return -np.dot(weights.T, np.dot(cov_matrix, weights)) / portfolio_volatility  # Minimize concentration
+        weightedVol = weights @ volatilities
+        portVol = np.sqrt(weights @ covMatrix @ weights)
+        return -weightedVol / (portVol + 1e-10)
     
-    constraints = ({'type': 'eq', 'fun': lambda w: np.sum(w) - 1})
+    initialWeights = np.ones(nAssets) / nAssets
+    bounds = [(0, 1) for _ in range(nAssets)]
     
-    bounds = [(0, 1) for _ in range(num_assets)]
+    bestWeights = _minimize(objective, initialWeights, bounds=bounds)
     
-    initial_weights = np.ones(num_assets) / num_assets
-    result = minimize(objective, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
+    bestWeights = bestWeights / np.sum(bestWeights)
     
-    return result.x
+    return bestWeights
 
-def lasso(expected_returns, cov_matrix, alpha=0.01):
+def tangency(expectedReturns, covMatrix, riskFreeRate=0):
     """
-    LASSO Portfolio optimization using L1 regularization.
+    Tangency portfolio (maximum Sharpe ratio).
     
-    :param expected_returns: Expected returns for each asset
-    :param cov_matrix: Covariance matrix of asset returns
-    :param alpha: Regularization parameter (higher alpha means more shrinkage)
-    :return: Weights of the LASSO Portfolio
+    Parameters:
+        expectedReturns: expected returns
+        covMatrix: covariance matrix
+        riskFreeRate: risk-free rate
+    
+    Returns:
+        tangency portfolio weights
     """
-    num_assets = len(expected_returns)
+    nAssets = len(expectedReturns)
+    excessReturns = expectedReturns - riskFreeRate
     
     def objective(weights):
-        portfolio_return = np.dot(weights, expected_returns)
-        portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
-        lasso_penalty = alpha * np.sum(np.abs(weights))  # L1 penalty term
-        return -portfolio_return / portfolio_volatility + lasso_penalty
+        portReturn = weights @ excessReturns
+        portVol = np.sqrt(weights @ covMatrix @ weights)
+        return -portReturn / (portVol + 1e-10)
     
-    constraints = ({'type': 'eq', 'fun': lambda w: np.sum(w) - 1})
+    initialWeights = np.ones(nAssets) / nAssets
+    bounds = [(0, 1) for _ in range(nAssets)]
     
-    bounds = [(0, 1) for _ in range(num_assets)]
+    bestWeights = _minimize(objective, initialWeights, bounds=bounds)
     
-    initial_weights = np.ones(num_assets) / num_assets
-    result = minimize(objective, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
+    bestWeights = bestWeights / np.sum(bestWeights)
     
-    return result.x
+    return bestWeights
 
-def tangency_portfolio(expected_returns, cov_matrix, risk_free_rate=0):
+def maxSharpe(expectedReturns, covMatrix, riskFreeRate=0):
     """
-    Tangency Portfolio optimization (maximizing the Sharpe ratio).
+    Maximum Sharpe ratio portfolio (alias for tangency).
     
-    :param expected_returns: Expected returns for each asset
-    :param cov_matrix: Covariance matrix of asset returns
-    :param risk_free_rate: Risk-free rate (default is 0)
-    :return: Weights of the Tangency Portfolio
+    Parameters:
+        expectedReturns: expected returns
+        covMatrix: covariance matrix
+        riskFreeRate: risk-free rate
+    
+    Returns:
+        maximum Sharpe portfolio weights
     """
-    num_assets = len(expected_returns)
+    return tangency(expectedReturns, covMatrix, riskFreeRate)
 
-    excess_returns = expected_returns - risk_free_rate
+def efficientFrontier(expectedReturns, covMatrix, nPoints=50):
+    """
+    Compute efficient frontier.
+    
+    Parameters:
+        expectedReturns: expected returns
+        covMatrix: covariance matrix
+        nPoints: number of points on frontier
+    
+    Returns:
+        list of dicts with returns, volatility, weights
+    """
+    minVar = minVariance(covMatrix)
+    minRet = minVar @ expectedReturns
+    maxRet = np.max(expectedReturns)
+    
+    targetReturns = np.linspace(minRet, maxRet, nPoints)
+    
+    frontier = []
+    
+    for targetRet in targetReturns:
+        nAssets = len(expectedReturns)
+        
+        def objective(weights):
+            return weights @ covMatrix @ weights
+        
+        initialWeights = np.ones(nAssets) / nAssets
+        bounds = [(0, 1) for _ in range(nAssets)]
+        
+        bestWeights = initialWeights.copy()
+        bestVar = objective(bestWeights)
+        
+        for _ in range(500):
+            testWeights = np.random.dirichlet(np.ones(nAssets))
+            testRet = testWeights @ expectedReturns
+            
+            if abs(testRet - targetRet) < 0.01:
+                testVar = objective(testWeights)
+                if testVar < bestVar:
+                    bestWeights = testWeights
+                    bestVar = testVar
+        
+        weights = bestWeights
+        portRet = weights @ expectedReturns
+        portVol = np.sqrt(weights @ covMatrix @ weights)
+        
+        frontier.append({
+            'return': portRet,
+            'volatility': portVol,
+            'weights': weights
+        })
+    
+    return frontier
 
-    def objective(weights):
-        portfolio_return = np.dot(weights, excess_returns)
-        portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
-        return -portfolio_return / portfolio_volatility
+def hierarchicalRiskParity(covMatrix, returns):
+    """
+    Hierarchical risk parity portfolio allocation.
     
-    constraints = ({'type': 'eq', 'fun': lambda w: np.sum(w) - 1})
-    bounds = [(0, 1) for _ in range(num_assets)]
+    Parameters:
+        covMatrix: covariance matrix
+        returns: historical returns (for correlation)
     
-    initial_weights = np.ones(num_assets) / num_assets
-    result = minimize(objective, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
+    Returns:
+        HRP portfolio weights
+    """
+    nAssets = len(covMatrix)
     
-    return result.x
+    corr = covMatrix / np.outer(np.sqrt(np.diag(covMatrix)), np.sqrt(np.diag(covMatrix)))
+    
+    dist = np.sqrt((1 - corr) / 2)
+    
+    clusters = [[i] for i in range(nAssets)]
+    
+    while len(clusters) > 1:
+        minDist = float('inf')
+        mergeI, mergeJ = 0, 1
+        
+        for i in range(len(clusters)):
+            for j in range(i + 1, len(clusters)):
+                clusterDist = 0
+                count = 0
+                for a in clusters[i]:
+                    for b in clusters[j]:
+                        clusterDist += dist[a, b]
+                        count += 1
+                avgDist = clusterDist / count
+                
+                if avgDist < minDist:
+                    minDist = avgDist
+                    mergeI, mergeJ = i, j
+        
+        clusters[mergeI].extend(clusters[mergeJ])
+        del clusters[mergeJ]
+    
+    def allocate(cluster):
+        if len(cluster) == 1:
+            return {cluster[0]: 1.0}
+        
+        mid = len(cluster) // 2
+        left = cluster[:mid]
+        right = cluster[mid:]
+        
+        leftVar = covMatrix[np.ix_(left, left)].sum()
+        rightVar = covMatrix[np.ix_(right, right)].sum()
+        
+        totalVar = leftVar + rightVar
+        leftWeight = 1.0 - leftVar / totalVar
+        rightWeight = 1.0 - rightVar / totalVar
+        
+        leftAlloc = allocate(left)
+        rightAlloc = allocate(right)
+        
+        allocation = {}
+        for asset, weight in leftAlloc.items():
+            allocation[asset] = weight * leftWeight
+        for asset, weight in rightAlloc.items():
+            allocation[asset] = weight * rightWeight
+        
+        return allocation
+    
+    allocation = allocate(clusters[0])
+    
+    weights = np.zeros(nAssets)
+    for asset, weight in allocation.items():
+        weights[asset] = weight
+    
+    weights = weights / np.sum(weights)
+    
+    return weights
+
+def minCvar(expectedReturns, returns, alpha=0.95):
+    """
+    Minimum CVaR (Conditional Value at Risk) portfolio.
+    
+    Parameters:
+        expectedReturns: expected returns
+        returns: historical returns matrix (nSamples x nAssets)
+        alpha: confidence level
+    
+    Returns:
+        minimum CVaR portfolio weights
+    """
+    nAssets = returns.shape[1]
+    
+    def cvar(weights):
+        portReturns = returns @ weights
+        var = np.percentile(portReturns, (1 - alpha) * 100)
+        tailLosses = portReturns[portReturns <= var]
+        return -np.mean(tailLosses) if len(tailLosses) > 0 else 0
+    
+    initialWeights = np.ones(nAssets) / nAssets
+    bounds = [(0, 1) for _ in range(nAssets)]
+    
+    bestWeights = _minimize(cvar, initialWeights, bounds=bounds)
+    
+    bestWeights = bestWeights / np.sum(bestWeights)
+    
+    return bestWeights
+
+def maxReturn(expectedReturns):
+    """
+    Maximum return portfolio (100% in highest expected return asset).
+    
+    Parameters:
+        expectedReturns: expected returns
+    
+    Returns:
+        maximum return portfolio weights
+    """
+    weights = np.zeros(len(expectedReturns))
+    weights[np.argmax(expectedReturns)] = 1.0
+    return weights

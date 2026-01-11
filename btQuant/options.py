@@ -1,48 +1,56 @@
 import numpy as np
-from scipy.stats import norm
-from itertools import product
-import pandas as pd
 
-def blackScholes(S, K, T, r, sigma, b=None, option_type='call'):
+def _normCdf(x):
+    """Standard normal cumulative distribution function."""
+    return 0.5 * (1.0 + np.tanh(x / np.sqrt(2.0) * 0.7978845608))
+
+def _normPdf(x):
+    """Standard normal probability density function."""
+    return np.exp(-0.5 * x * x) / np.sqrt(2.0 * np.pi)
+
+def blackScholes(S, K, T, r, sigma, b=None, optType='call'):
     """
-    Prices a European option using the Black-Scholes model with cost of carry.
+    European option pricing using Black-Scholes model with cost of carry.
+    
     Parameters:
-        S : float - current stock price
-        K : float - strike price
-        T : float - time to maturity (in years)
-        r : float - risk-free rate
-        sigma : float - volatility
-        b : float - cost of carry (if None, defaults to r)
-            - For stocks with dividend yield q: b = r - q
-            - For futures: b = 0
-            - For indices with continuous dividend yield q: b = r - q
-            - For currencies with foreign risk-free rate rf: b = r - rf
-        option_type : str - 'call' or 'put'
+        S: current asset price
+        K: strike price
+        T: time to maturity (years)
+        r: risk-free rate
+        sigma: volatility
+        b: cost of carry (default r)
+        optType: 'call' or 'put'
+    
     Returns:
         dict with price, delta, gamma, vega, rho, theta
     """
     if b is None:
         b = r
     
-    d1 = (np.log(S / K) + (b + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
-    d2 = d1 - sigma * np.sqrt(T)
+    sqrtT = np.sqrt(T)
+    d1 = (np.log(S / K) + (b + 0.5 * sigma**2) * T) / (sigma * sqrtT)
+    d2 = d1 - sigma * sqrtT
     
-    if option_type == 'call':
-        price = S * np.exp((b - r) * T) * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
-        delta = np.exp((b - r) * T) * norm.cdf(d1)
-        rho = K * T * np.exp(-r * T) * norm.cdf(d2)
+    expBRT = np.exp((b - r) * T)
+    expRT = np.exp(-r * T)
+    
+    if optType == 'call':
+        price = S * expBRT * _normCdf(d1) - K * expRT * _normCdf(d2)
+        delta = expBRT * _normCdf(d1)
+        rho = K * T * expRT * _normCdf(d2)
+        theta = (-S * expBRT * _normPdf(d1) * sigma / (2 * sqrtT) - 
+                (b - r) * S * expBRT * _normCdf(d1) - 
+                r * K * expRT * _normCdf(d2))
     else:
-        price = K * np.exp(-r * T) * norm.cdf(-d2) - S * np.exp((b - r) * T) * norm.cdf(-d1)
-        delta = -np.exp((b - r) * T) * norm.cdf(-d1)
-        rho = -K * T * np.exp(-r * T) * norm.cdf(-d2)
+        price = K * expRT * _normCdf(-d2) - S * expBRT * _normCdf(-d1)
+        delta = -expBRT * _normCdf(-d1)
+        rho = -K * T * expRT * _normCdf(-d2)
+        theta = (-S * expBRT * _normPdf(d1) * sigma / (2 * sqrtT) + 
+                (b - r) * S * expBRT * _normCdf(-d1) + 
+                r * K * expRT * _normCdf(-d2))
     
-    gamma = np.exp((b - r) * T) * norm.pdf(d1) / (S * sigma * np.sqrt(T))
-    vega = S * np.exp((b - r) * T) * norm.pdf(d1) * np.sqrt(T)
-    
-    if option_type == 'call':
-        theta = -S * np.exp((b - r) * T) * norm.pdf(d1) * sigma / (2 * np.sqrt(T)) - (b - r) * S * np.exp((b - r) * T) * norm.cdf(d1) - r * K * np.exp(-r * T) * norm.cdf(d2)
-    else:
-        theta = -S * np.exp((b - r) * T) * norm.pdf(d1) * sigma / (2 * np.sqrt(T)) + (b - r) * S * np.exp((b - r) * T) * norm.cdf(-d1) + r * K * np.exp(-r * T) * norm.cdf(-d2)
+    gamma = expBRT * _normPdf(d1) / (S * sigma * sqrtT)
+    vega = S * expBRT * _normPdf(d1) * sqrtT
     
     return {
         'price': price,
@@ -53,23 +61,21 @@ def blackScholes(S, K, T, r, sigma, b=None, option_type='call'):
         'theta': theta
     }
 
-def binomialTree(S, K, T, r, sigma, b=None, N=100, option_type='call', american=False):
+def binomial(S, K, T, r, sigma, b=None, N=100, optType='call', american=False):
     """
-    Prices European or American options using the Binomial Tree method with cost of carry.
+    European or American option pricing using binomial tree.
+    
     Parameters:
-        S : float - current stock price
-        K : float - strike price
-        T : float - time to maturity (in years)
-        r : float - risk-free rate
-        sigma : float - volatility
-        b : float - cost of carry (if None, defaults to r)
-            - For stocks with dividend yield q: b = r - q
-            - For futures: b = 0
-            - For indices with continuous dividend yield q: b = r - q
-            - For currencies with foreign risk-free rate rf: b = r - rf
-        N : int - number of time steps
-        option_type : str - 'call' or 'put'
-        american : bool - whether the option is American style
+        S: current asset price
+        K: strike price
+        T: time to maturity (years)
+        r: risk-free rate
+        sigma: volatility
+        b: cost of carry (default r)
+        N: number of time steps
+        optType: 'call' or 'put'
+        american: American style if True
+    
     Returns:
         dict with price, delta, gamma, theta
     """
@@ -78,261 +84,245 @@ def binomialTree(S, K, T, r, sigma, b=None, N=100, option_type='call', american=
     
     dt = T / N
     u = np.exp(sigma * np.sqrt(dt))
-    d = 1 / u
-    
+    d = 1.0 / u
     q = (np.exp(b * dt) - d) / (u - d)
+    disc = np.exp(-r * dt)
     
-    S_T = np.zeros((N+1, N+1))
-    option_values = np.zeros((N+1, N+1))
+    prices = np.zeros((N + 1, N + 1))
+    values = np.zeros((N + 1, N + 1))
     
-    for i in range(N+1):
-        for j in range(i+1):
-            S_T[j, i] = S * (u**(i-j)) * (d**j)
-            
-    for j in range(N+1):
-        if option_type == 'call':
-            option_values[j, N] = max(0, S_T[j, N] - K)
-        else:
-            option_values[j, N] = max(0, K - S_T[j, N])
+    for i in range(N + 1):
+        for j in range(i + 1):
+            prices[j, i] = S * (u ** (i - j)) * (d ** j)
     
-    for i in range(N-1, -1, -1):
-        for j in range(i+1):
-            option_values[j, i] = np.exp(-r * dt) * (q * option_values[j, i+1] + (1-q) * option_values[j+1, i+1])
+    if optType == 'call':
+        values[:, N] = np.maximum(prices[:, N] - K, 0)
+    else:
+        values[:, N] = np.maximum(K - prices[:, N], 0)
+    
+    for i in range(N - 1, -1, -1):
+        for j in range(i + 1):
+            values[j, i] = disc * (q * values[j, i + 1] + (1 - q) * values[j + 1, i + 1])
             if american:
-                if option_type == 'call':
-                    option_values[j, i] = max(option_values[j, i], S_T[j, i] - K)
+                if optType == 'call':
+                    values[j, i] = max(values[j, i], prices[j, i] - K)
                 else:
-                    option_values[j, i] = max(option_values[j, i], K - S_T[j, i])
+                    values[j, i] = max(values[j, i], K - prices[j, i])
     
-    price = option_values[0, 0]
+    price = values[0, 0]
     
     if N > 1:
-        delta = (option_values[0, 1] - option_values[1, 1]) / (S_T[0, 1] - S_T[1, 1])
+        delta = (values[0, 1] - values[1, 1]) / (prices[0, 1] - prices[1, 1])
         if N > 2:
-            gamma = ((option_values[0, 2] - option_values[1, 2]) / (S_T[0, 2] - S_T[1, 2]) - 
-                    (option_values[1, 2] - option_values[2, 2]) / (S_T[1, 2] - S_T[2, 2])) / ((S_T[0, 2] - S_T[2, 2])/2)
+            gamma = ((values[0, 2] - values[1, 2]) / (prices[0, 2] - prices[1, 2]) - 
+                    (values[1, 2] - values[2, 2]) / (prices[1, 2] - prices[2, 2])) / ((prices[0, 2] - prices[2, 2]) / 2)
         else:
-            gamma = 0
+            gamma = 0.0
     else:
-        delta = 0
-        gamma = 0
+        delta = 0.0
+        gamma = 0.0
     
-    theta = (option_values[0, 1] - price) / dt
+    theta = (values[0, 1] - price) / dt if N > 0 else 0.0
     
-    return {
-        'price': price,
-        'delta': delta,
-        'gamma': gamma,
-        'theta': theta
-    }
+    return {'price': price, 'delta': delta, 'gamma': gamma, 'theta': theta}
 
-def trinomialTree(S, K, T, r, sigma, b=None, N=50, option_type='call', american=False):
+def trinomial(S, K, T, r, sigma, b=None, N=50, optType='call', american=False):
     """
-    Prices European or American options using the Trinomial Tree method with cost of carry.
+    European or American option pricing using trinomial tree.
+    
     Parameters:
-        S : float - current stock price
-        K : float - strike price
-        T : float - time to maturity (in years)
-        r : float - risk-free rate
-        sigma : float - volatility
-        b : float - cost of carry (if None, defaults to r)
-            - For stocks with dividend yield q: b = r - q
-            - For futures: b = 0
-            - For indices with continuous dividend yield q: b = r - q
-            - For currencies with foreign risk-free rate rf: b = r - rf
-        N : int - number of time steps
-        option_type : str - 'call' or 'put'
-        american : bool - whether the option is American style
-        calculate_greeks : bool - whether to calculate Greeks
+        S: current asset price
+        K: strike price
+        T: time to maturity (years)
+        r: risk-free rate
+        sigma: volatility
+        b: cost of carry (default r)
+        N: number of time steps
+        optType: 'call' or 'put'
+        american: American style if True
+    
     Returns:
         dict with price, delta, gamma, theta
     """
     if b is None:
         b = r
     
-    def compute_price(S_val, T_val):
-        dt = T_val / N
-        dx = sigma * np.sqrt(3 * dt)
-        
-        pu = 1/6 + (b - 0.5 * sigma**2) * dt / (2 * dx)
-        pd = 1/6 - (b - 0.5 * sigma**2) * dt / (2 * dx)
-        pm = 2/3
-        
-        df = np.exp(-r * dt)
-        
-        asset_prices = np.zeros(2*N+1)
-        for i in range(2*N+1):
-            asset_prices[i] = S_val * np.exp((i-N) * dx)
-        
-        if option_type == 'call':
-            option_values = np.maximum(asset_prices - K, 0)
-        else:
-            option_values = np.maximum(K - asset_prices, 0)
-        
-        for i in range(N-1, -1, -1):
-            new_option_values = np.zeros(2*i+1)
-            for j in range(2*i+1):
-                idx = j - i + N 
-                new_option_values[j] = df * (pu * option_values[idx+2] + pm * option_values[idx+1] + pd * option_values[idx])
-                
-                if american:
-                    current_price = S_val * np.exp((j-i) * dx)
-                    if option_type == 'call':
-                        new_option_values[j] = max(new_option_values[j], current_price - K)
-                    else:
-                        new_option_values[j] = max(new_option_values[j], K - current_price)
-            
-            option_values = new_option_values
-        
-        return option_values[0]
-    
-    price = compute_price(S, T)
-    
-    delta = None
-    gamma = None
-    theta = None
-    
-    h = 0.01 * S
-    
-    price_up = compute_price(S+h, T)
-    price_down = compute_price(S-h, T)
-    
-    delta = (price_up - price_down) / (2 * h)
-    gamma = (price_up - 2*price + price_down) / (h**2)
-    
     dt = T / N
-    if T > dt:
-        price_dt = compute_price(S, T-dt)
-        theta = (price_dt - price) / dt
+    dx = sigma * np.sqrt(3 * dt)
     
-    return {
-        'price': price,
-        'delta': delta,
-        'gamma': gamma,
-        'theta': theta
-    }
-
-def asian(S, K, T, r, sigma, b=None, n_steps=100, option_type='call'):
-    """
-    Prices Asian options with geometric averaging using analytic formula with cost of carry.
-    Parameters:
-        S : float - current stock price
-        K : float - strike price
-        T : float - time to maturity (in years)
-        r : float - risk-free rate
-        sigma : float - volatility
-        b : float - cost of carry (if None, defaults to r)
-            - For stocks with dividend yield q: b = r - q
-            - For futures: b = 0
-            - For indices with continuous dividend yield q: b = r - q
-            - For currencies with foreign risk-free rate rf: b = r - rf
-        n_steps : int - number of time steps in simulation
-        n_simulations : int - number of simulations
-        option_type : str - 'call' or 'put'
-    Returns:
-        dict with price, delta, gamma, vega, rho, theta
-    """
-    if b is None:
-        b = r
+    pu = 1.0 / 6.0 + (b - 0.5 * sigma**2) * dt / (2 * dx)
+    pd = 1.0 / 6.0 - (b - 0.5 * sigma**2) * dt / (2 * dx)
+    pm = 2.0 / 3.0
     
-    def compute_price(S_val, T_val, r_val=r, sigma_val=sigma, b_val=b):
-        dt = T_val / n_steps
-        
-        sigma_adj = sigma_val * np.sqrt((n_steps + 1) * (2 * n_steps + 1) / (6 * n_steps**2))
-        b_adj = (b_val - 0.5 * sigma_val**2) * (n_steps + 1) / (2 * n_steps) + 0.5 * sigma_adj**2
-        
-        d1 = (np.log(S_val / K) + (b_adj + 0.5 * sigma_adj**2) * T_val) / (sigma_adj * np.sqrt(T_val))
-        d2 = d1 - sigma_adj * np.sqrt(T_val)
-        
-        if option_type == 'call':
-            price = np.exp(-r_val * T_val) * (S_val * np.exp(b_adj * T_val) * norm.cdf(d1) - K * norm.cdf(d2))
-        else:
-            price = np.exp(-r_val * T_val) * (K * norm.cdf(-d2) - S_val * np.exp(b_adj * T_val) * norm.cdf(-d1))
-            
-        return price
+    disc = np.exp(-r * dt)
     
-    price = compute_price(S, T)
+    assetPrices = S * np.exp(np.arange(-N, N + 1) * dx)
     
-    dt = T / n_steps
-    sigma_adj = sigma * np.sqrt((n_steps + 1) * (2 * n_steps + 1) / (6 * n_steps**2))
-    b_adj = (b - 0.5 * sigma**2) * (n_steps + 1) / (2 * n_steps) + 0.5 * sigma_adj**2
-    
-    d1 = (np.log(S / K) + (b_adj + 0.5 * sigma_adj**2) * T) / (sigma_adj * np.sqrt(T))
-    
-    if option_type == 'call':
-        delta = np.exp(-r * T + b_adj * T) * norm.cdf(d1)
+    if optType == 'call':
+        values = np.maximum(assetPrices - K, 0)
     else:
-        delta = -np.exp(-r * T + b_adj * T) * norm.cdf(-d1)
+        values = np.maximum(K - assetPrices, 0)
+    
+    for i in range(N - 1, -1, -1):
+        newValues = np.zeros(2 * i + 1)
+        for j in range(2 * i + 1):
+            idx = j - i + N
+            newValues[j] = disc * (pu * values[idx + 2] + pm * values[idx + 1] + pd * values[idx])
+            
+            if american:
+                currentPrice = S * np.exp((j - i) * dx)
+                if optType == 'call':
+                    newValues[j] = max(newValues[j], currentPrice - K)
+                else:
+                    newValues[j] = max(newValues[j], K - currentPrice)
+        
+        values = newValues
+    
+    price = values[0]
     
     h = 0.01 * S
     
-    price_up = compute_price(S+h, T)
-    price_down = compute_price(S-h, T)
+    assetPricesUp = S * (1 + h / S) * np.exp(np.arange(-N, N + 1) * dx)
+    assetPricesDown = S * (1 - h / S) * np.exp(np.arange(-N, N + 1) * dx)
     
-    
-    gamma = (price_up - 2*price + price_down) / (h**2)
-    
-    h_vol = 0.005
-    price_vol_up = compute_price(S, T, r, sigma+h_vol, b)
-    price_vol_down = compute_price(S, T, r, sigma-h_vol, b)
-    vega = (price_vol_up - price_vol_down) / (2 * h_vol)
-    
-    if T > dt:
-        price_dt = compute_price(S, T-dt)
-        theta = (price_dt - price) / dt
+    if optType == 'call':
+        valuesUp = np.maximum(assetPricesUp - K, 0)
+        valuesDown = np.maximum(assetPricesDown - K, 0)
     else:
-        theta = None
+        valuesUp = np.maximum(K - assetPricesUp, 0)
+        valuesDown = np.maximum(K - assetPricesDown, 0)
     
-    h_r = 0.0025
-    price_r_up = compute_price(S, T, r+h_r, sigma, b)
-    price_r_down = compute_price(S, T, r-h_r, sigma, b)
-    rho = (price_r_up - price_r_down) / (2 * h_r)
+    for i in range(N - 1, -1, -1):
+        newValuesUp = np.zeros(2 * i + 1)
+        newValuesDown = np.zeros(2 * i + 1)
+        for j in range(2 * i + 1):
+            idx = j - i + N
+            newValuesUp[j] = disc * (pu * valuesUp[idx + 2] + pm * valuesUp[idx + 1] + pd * valuesUp[idx])
+            newValuesDown[j] = disc * (pu * valuesDown[idx + 2] + pm * valuesDown[idx + 1] + pd * valuesDown[idx])
+        valuesUp = newValuesUp
+        valuesDown = newValuesDown
     
-    return {
-        'price': price,
-        'delta': delta,
-        'gamma': gamma,
-        'vega': vega,
-        'rho': rho,
-        'theta': theta
-    }
+    priceUp = valuesUp[0]
+    priceDown = valuesDown[0]
+    
+    delta = (priceUp - priceDown) / (2 * h)
+    gamma = (priceUp - 2 * price + priceDown) / (h**2)
+    
+    theta = 0.0
+    if T > dt:
+        dtTheta = dt
+        assetPricesTheta = S * np.exp(np.arange(-N, N + 1) * dx)
+        if optType == 'call':
+            valuesTheta = np.maximum(assetPricesTheta - K, 0)
+        else:
+            valuesTheta = np.maximum(K - assetPricesTheta, 0)
+        
+        for i in range(N - 2, -1, -1):
+            newValuesTheta = np.zeros(2 * i + 1)
+            for j in range(2 * i + 1):
+                idx = j - i + N
+                newValuesTheta[j] = disc * (pu * valuesTheta[idx + 2] + pm * valuesTheta[idx + 1] + pd * valuesTheta[idx])
+            valuesTheta = newValuesTheta
+        
+        priceTheta = valuesTheta[0]
+        theta = (priceTheta - price) / dtTheta
+    
+    return {'price': price, 'delta': delta, 'gamma': gamma, 'theta': theta}
 
-def binary(S, K, T, r, sigma, b=None, option_type='call'):
+def asian(S, K, T, r, sigma, b=None, nSteps=100, optType='call'):
     """
-    Prices a Binary (Cash-or-Nothing) option using the Black-Scholes formula with cost of carry.
+    Asian option pricing with geometric averaging using analytic formula.
+    
     Parameters:
-        S : float - current stock price
-        K : float - strike price
-        T : float - time to maturity (in years)
-        r : float - risk-free rate
-        sigma : float - volatility
-        b : float - cost of carry (if None, defaults to r)
-            - For stocks with dividend yield q: b = r - q
-            - For futures: b = 0
-            - For indices with continuous dividend yield q: b = r - q
-            - For currencies with foreign risk-free rate rf: b = r - rf
-        option_type : str - 'call' or 'put'
+        S: current asset price
+        K: strike price
+        T: time to maturity (years)
+        r: risk-free rate
+        sigma: volatility
+        b: cost of carry (default r)
+        nSteps: number of averaging steps
+        optType: 'call' or 'put'
+    
     Returns:
         dict with price, delta, gamma, vega, rho, theta
     """
     if b is None:
         b = r
-        
-    d1 = (np.log(S / K) + (b + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
-    d2 = d1 - sigma * np.sqrt(T)
     
-    if option_type == 'call':
-        price = np.exp(-r * T) * norm.cdf(d2)
-        delta = np.exp(-r * T) * norm.pdf(d2) / (S * sigma * np.sqrt(T))
-        rho = -T * price
+    dt = T / nSteps
+    
+    sigmaAdj = sigma * np.sqrt((nSteps + 1) * (2 * nSteps + 1) / (6 * nSteps**2))
+    bAdj = 0.5 * (b - 0.5 * sigma**2) + 0.5 * sigmaAdj**2
+    
+    sqrtT = np.sqrt(T)
+    d1 = (np.log(S / K) + (bAdj + 0.5 * sigmaAdj**2) * T) / (sigmaAdj * sqrtT)
+    d2 = d1 - sigmaAdj * sqrtT
+    
+    expRT = np.exp(-r * T)
+    expBRT = np.exp((bAdj - r) * T)
+    
+    if optType == 'call':
+        price = S * expBRT * _normCdf(d1) - K * expRT * _normCdf(d2)
+        delta = expBRT * _normCdf(d1)
     else:
-        price = np.exp(-r * T) * norm.cdf(-d2)
-        delta = -np.exp(-r * T) * norm.pdf(d2) / (S * sigma * np.sqrt(T))
-        rho = -T * price
+        price = K * expRT * _normCdf(-d2) - S * expBRT * _normCdf(-d1)
+        delta = -expBRT * _normCdf(-d1)
+    
+    h = 0.01 * S
+    
+    d1Up = (np.log((S + h) / K) + (bAdj + 0.5 * sigmaAdj**2) * T) / (sigmaAdj * sqrtT)
+    d2Up = d1Up - sigmaAdj * sqrtT
+    d1Down = (np.log((S - h) / K) + (bAdj + 0.5 * sigmaAdj**2) * T) / (sigmaAdj * sqrtT)
+    d2Down = d1Down - sigmaAdj * sqrtT
+    
+    if optType == 'call':
+        priceUp = (S + h) * expBRT * _normCdf(d1Up) - K * expRT * _normCdf(d2Up)
+        priceDown = (S - h) * expBRT * _normCdf(d1Down) - K * expRT * _normCdf(d2Down)
+    else:
+        priceUp = K * expRT * _normCdf(-d2Up) - (S + h) * expBRT * _normCdf(-d1Up)
+        priceDown = K * expRT * _normCdf(-d2Down) - (S - h) * expBRT * _normCdf(-d1Down)
+    
+    gamma = (priceUp - 2 * price + priceDown) / (h**2)
+    
+    hVol = 0.005
+    sigmaAdjUp = (sigma + hVol) * np.sqrt((nSteps + 1) * (2 * nSteps + 1) / (6 * nSteps**2))
+    bAdjUp = 0.5 * (b - 0.5 * (sigma + hVol)**2) + 0.5 * sigmaAdjUp**2
+    d1VolUp = (np.log(S / K) + (bAdjUp + 0.5 * sigmaAdjUp**2) * T) / (sigmaAdjUp * sqrtT)
+    d2VolUp = d1VolUp - sigmaAdjUp * sqrtT
+    
+    if optType == 'call':
+        priceVolUp = S * np.exp((bAdjUp - r) * T) * _normCdf(d1VolUp) - K * expRT * _normCdf(d2VolUp)
+    else:
+        priceVolUp = K * expRT * _normCdf(-d2VolUp) - S * np.exp((bAdjUp - r) * T) * _normCdf(-d1VolUp)
+    
+    vega = (priceVolUp - price) / hVol
+    
+    hR = 0.0025
+    expRTUp = np.exp(-(r + hR) * T)
+    expBRTUp = np.exp((bAdj - (r + hR)) * T)
+    
+    if optType == 'call':
+        priceRUp = S * expBRTUp * _normCdf(d1) - K * expRTUp * _normCdf(d2)
+    else:
+        priceRUp = K * expRTUp * _normCdf(-d2) - S * expBRTUp * _normCdf(-d1)
+    
+    rho = (priceRUp - price) / hR
+    
+    theta = 0.0
+    if T > dt:
+        TTheta = T - dt
+        sqrtTTheta = np.sqrt(TTheta)
+        d1Theta = (np.log(S / K) + (bAdj + 0.5 * sigmaAdj**2) * TTheta) / (sigmaAdj * sqrtTTheta)
+        d2Theta = d1Theta - sigmaAdj * sqrtTTheta
+        expRTTheta = np.exp(-r * TTheta)
+        expBRTTheta = np.exp((bAdj - r) * TTheta)
         
-    gamma = -np.exp(-r * T) * norm.pdf(d2) * d1 / (S**2 * sigma**2 * T)
-    vega = -np.exp(-r * T) * norm.pdf(d2) * d1 / (sigma)
-    theta = -np.exp(-r * T) * norm.pdf(d2) * (r + ((-d1 * sigma) / (2 * T * np.sqrt(T))))
+        if optType == 'call':
+            priceTheta = S * expBRTTheta * _normCdf(d1Theta) - K * expRTTheta * _normCdf(d2Theta)
+        else:
+            priceTheta = K * expRTTheta * _normCdf(-d2Theta) - S * expBRTTheta * _normCdf(-d1Theta)
+        
+        theta = (priceTheta - price) / dt
     
     return {
         'price': price,
@@ -343,141 +333,220 @@ def binary(S, K, T, r, sigma, b=None, option_type='call'):
         'theta': theta
     }
 
-def real(S, K, T, r, sigma, b=None, dividend=0, option_type='defer'):
+def binary(S, K, T, r, sigma, b=None, optType='call'):
     """
-    Prices a simple real option (deferral/expansion) using Black-Scholes as a base model with cost of carry.
+    Binary (cash-or-nothing) option pricing.
+    
     Parameters:
-        S : float - present value of expected cash flows
-        K : float - investment cost/strike price
-        T : float - time to expiry of deferral option (in years)
-        r : float - risk-free rate
-        sigma : float - volatility of project value
-        b : float - cost of carry (if None, defaults to r-dividend)
-        dividend : float - dividend/leakage rate (opportunity cost of waiting)
-        option_type : str - 'defer' (right to wait) or 'expand' (right to scale)
+        S: current asset price
+        K: strike price
+        T: time to maturity (years)
+        r: risk-free rate
+        sigma: volatility
+        b: cost of carry (default r)
+        optType: 'call' or 'put'
+    
     Returns:
-        dict with price (option value), delta, gamma, vega, rho, theta
+        dict with price, delta, gamma, vega, rho, theta
     """
     if b is None:
-        b = r - dividend
+        b = r
     
-    if option_type == 'defer':
-        return blackScholes(S, K, T, r, sigma, b, 'call')
-    elif option_type == 'expand':
-        expansion_factor = 1.5
-        expansion_value = blackScholes(S * expansion_factor - S, K, T, r, sigma, b, 'call')
-        
-        base_price = expansion_value['price']
-        return {
-            'price': base_price,
-            'delta': expansion_value['delta'] * expansion_factor,
-            'gamma': expansion_value['gamma'] * (expansion_factor**2),
-            'vega': expansion_value['vega'] * expansion_factor,
-            'rho': expansion_value['rho'],
-            'theta': expansion_value['theta']
-        }
+    sqrtT = np.sqrt(T)
+    d1 = (np.log(S / K) + (b + 0.5 * sigma**2) * T) / (sigma * sqrtT)
+    d2 = d1 - sigma * sqrtT
+    
+    expRT = np.exp(-r * T)
+    
+    if optType == 'call':
+        price = expRT * _normCdf(d2)
+        delta = expRT * _normPdf(d2) / (S * sigma * sqrtT)
+        rho = -T * price
     else:
-        raise ValueError("Option type must be 'defer' or 'expand'")
+        price = expRT * _normCdf(-d2)
+        delta = -expRT * _normPdf(d2) / (S * sigma * sqrtT)
+        rho = -T * price
+    
+    gamma = -expRT * _normPdf(d2) * d1 / (S**2 * sigma**2 * T)
+    vega = -expRT * _normPdf(d2) * d1 / sigma
+    theta = -expRT * _normPdf(d2) * (r + ((-d1 * sigma) / (2 * T * sqrtT)))
+    
+    return {
+        'price': price,
+        'delta': delta,
+        'gamma': gamma,
+        'vega': vega,
+        'rho': rho,
+        'theta': theta
+    }
 
-def generateRange(model_func, param_ranges, fixed_params, option_type='call'):
+def monteCarlo(S, K, T, r, sigma, b=None, nSims=10000, nSteps=100, optType='call', american=False, seed=None):
     """
-    Generate a DataFrame of option prices across a range of parameter values.
+    Monte Carlo option pricing for European and American options.
     
     Parameters:
-        model_func : function - the option pricing model function to use
-            (e.g. blackScholes, binomialTree, trinomialTree, asian, binary, real)
-        
-        param_ranges : dict - parameters to vary and their ranges
-            Format: {'param_name': {'start': value, 'end': value, 'step': value}}
-            Example: {'S': {'start': 90, 'end': 110, 'step': 5}}
-        
-        fixed_params : dict - parameters to keep fixed
-            Format: {'param_name': value}
-            Example: {'K': 100, 'T': 1, 'r': 0.05, 'sigma': 0.2}
-        
-        option_type : str - the type of option ('call', 'put', etc.)
+        S: current asset price
+        K: strike price
+        T: time to maturity (years)
+        r: risk-free rate
+        sigma: volatility
+        b: cost of carry (default r)
+        nSims: number of simulations
+        nSteps: number of time steps
+        optType: 'call' or 'put'
+        american: American style if True
+        seed: random seed for reproducibility
     
     Returns:
-        pandas DataFrame with option prices and Greeks
+        dict with price, stderr (standard error)
     """
-    if not param_ranges:
-        raise ValueError("At least one parameter range must be specified")
-
-    param_values = {}
-    for param, range_dict in param_ranges.items():
-        start = range_dict['start']
-        end = range_dict['end']
-        step = range_dict['step']
-        param_values[param] = np.arange(start, end + step/2, step)
+    if b is None:
+        b = r
     
-    param_names = list(param_values.keys())
-    combinations = list(product(*[param_values[p] for p in param_names]))
+    if seed is not None:
+        np.random.seed(seed)
+    
+    dt = T / nSteps
+    drift = (b - 0.5 * sigma**2) * dt
+    shock = sigma * np.sqrt(dt)
+    
+    paths = np.zeros((nSims, nSteps + 1))
+    paths[:, 0] = S
+    
+    for t in range(1, nSteps + 1):
+        z = np.random.standard_normal(nSims)
+        paths[:, t] = paths[:, t - 1] * np.exp(drift + shock * z)
+    
+    if american:
+        values = np.zeros((nSims, nSteps + 1))
+        if optType == 'call':
+            values[:, nSteps] = np.maximum(paths[:, nSteps] - K, 0)
+        else:
+            values[:, nSteps] = np.maximum(K - paths[:, nSteps], 0)
+        
+        for t in range(nSteps - 1, -1, -1):
+            discValues = values[:, t + 1] * np.exp(-r * dt)
+            
+            if optType == 'call':
+                intrinsic = np.maximum(paths[:, t] - K, 0)
+            else:
+                intrinsic = np.maximum(K - paths[:, t], 0)
+            
+            inMoney = intrinsic > 0
+            
+            if np.sum(inMoney) > 0:
+                X = paths[inMoney, t].reshape(-1, 1)
+                X = np.column_stack([np.ones(len(X)), X, X**2])
+                y = discValues[inMoney]
+                
+                beta = np.linalg.lstsq(X, y, rcond=None)[0]
+                continuation = X @ beta
+                
+                exercise = intrinsic[inMoney] > continuation
+                values[inMoney, t] = np.where(exercise, intrinsic[inMoney], discValues[inMoney])
+                values[~inMoney, t] = discValues[~inMoney]
+            else:
+                values[:, t] = discValues
+        
+        price = np.mean(values[:, 0])
+    else:
+        if optType == 'call':
+            payoffs = np.maximum(paths[:, nSteps] - K, 0)
+        else:
+            payoffs = np.maximum(K - paths[:, nSteps], 0)
+        
+        price = np.exp(-r * T) * np.mean(payoffs)
+    
+    stderr = np.std(payoffs if not american else values[:, 0]) / np.sqrt(nSims)
+    
+    return {'price': price, 'stderr': stderr}
+
+def impliedVol(price, S, K, T, r, optType='call', b=None, tol=1e-6, maxIter=100):
+    """
+    Calculate implied volatility using Newton-Raphson method.
+    
+    Parameters:
+        price: observed option price
+        S: current asset price
+        K: strike price
+        T: time to maturity (years)
+        r: risk-free rate
+        optType: 'call' or 'put'
+        b: cost of carry (default r)
+        tol: tolerance for convergence
+        maxIter: maximum iterations
+    
+    Returns:
+        float: implied volatility
+    """
+    if b is None:
+        b = r
+    
+    sigma = 0.3
+    
+    for i in range(maxIter):
+        result = blackScholes(S, K, T, r, sigma, b, optType)
+        diff = result['price'] - price
+        
+        if abs(diff) < tol:
+            return sigma
+        
+        vega = result['vega']
+        if vega < 1e-10:
+            return np.nan
+        
+        sigma = sigma - diff / vega
+        
+        if sigma <= 0:
+            sigma = 0.01
+    
+    return np.nan
+
+def generateRange(modelFunc, paramRanges, fixedParams, optType='call'):
+    """
+    Generate option prices across parameter ranges.
+    
+    Parameters:
+        modelFunc: pricing function (e.g., blackScholes)
+        paramRanges: dict of {'param': {'start': val, 'end': val, 'step': val}}
+        fixedParams: dict of fixed parameter values
+        optType: 'call' or 'put'
+    
+    Returns:
+        list of dicts with parameters and results
+    """
+    from itertools import product
+    
+    if not paramRanges:
+        raise ValueError("At least one parameter range required")
+    
+    paramValues = {}
+    for param, rangeDict in paramRanges.items():
+        start = rangeDict['start']
+        end = rangeDict['end']
+        step = rangeDict['step']
+        paramValues[param] = np.arange(start, end + step / 2, step)
+    
+    paramNames = list(paramValues.keys())
+    combinations = list(product(*[paramValues[p] for p in paramNames]))
     
     results = []
     
     for combo in combinations:
-        params = fixed_params.copy()
-        for i, param_name in enumerate(param_names):
-            params[param_name] = combo[i]
+        params = fixedParams.copy()
+        for i, paramName in enumerate(paramNames):
+            params[paramName] = combo[i]
         
-        params['option_type'] = option_type
+        params['optType'] = optType
         
         try:
-            option_result = model_func(**params)
+            optResult = modelFunc(**params)
             
-            result_row = {param: params[param] for param in param_names}
+            resultRow = {param: params[param] for param in paramNames}
+            resultRow.update(optResult)
             
-            for key, value in option_result.items():
-                result_row[key] = value
-                
-            results.append(result_row)
-        except Exception as e:
-            print(f"Error calculating for parameters {params}: {e}")
+            results.append(resultRow)
+        except Exception:
+            pass
     
-    df = pd.DataFrame(results)
-
-    df = df.sort_values(by=param_names)
-    
-    return df
-
-# Example usage:
-# if __name__ == "__main__":
-#     param_ranges_1 = {
-#         'S': {'start': 90, 'end': 110, 'step': 5}
-#     }
-#     fixed_params_1 = {
-#         'K': 100, 
-#         'T': 1, 
-#         'r': 0.05, 
-#         'sigma': 0.2
-#     }
-    
-#     df1 = generate_option_price_range(
-#         blackScholes, 
-#         param_ranges_1, 
-#         fixed_params_1, 
-#         option_type='call'
-#     )
-#     print("Black-Scholes prices varying stock price:")
-#     print(df1)
-    
-#     param_ranges_2 = {
-#         'S': {'start': 95, 'end': 105, 'step': 5},
-#         'T': {'start': 0.5, 'end': 1.5, 'step': 0.5}
-#     }
-#     fixed_params_2 = {
-#         'K': 100, 
-#         'r': 0.05, 
-#         'sigma': 0.2,
-#         'N': 50,
-#         'american': True
-#     }
-    
-#     df2 = generate_option_price_range(
-#         binomialTree, 
-#         param_ranges_2, 
-#         fixed_params_2, 
-#         option_type='put'
-#     )
-#     print("\nBinomial Tree prices varying stock price and time to maturity:")
-#     print(df2)  
+    return results
