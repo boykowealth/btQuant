@@ -4,14 +4,13 @@ pyproject.toml
 setup.cfg
 btQuant/__init__.py
 btQuant/bootstrap.py
-btQuant/dimensionReduction.py
+btQuant/dimension.py
 btQuant/distributions.py
 btQuant/econometrics.py
 btQuant/factor.py
 btQuant/fit.py
 btQuant/ml.py
 btQuant/options.py
-btQuant/plot.py
 btQuant/portfolio.py
 btQuant/risk.py
 btQuant/sim.py
