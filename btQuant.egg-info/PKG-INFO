@@ -11,7 +11,7 @@ License-File: LICENSE
 Requires-Dist: numpy>=1.23
 Dynamic: license-file
 
-# btQuant
+![btQuant By Sip Global](btQuant.jpg)
 
 btQuant is the Python companion package for Systematic Index Partners (SIP Global) quantitative infrastructure. It provides tools for quantitative finance, econometrics, simulation, portfolio optimization, and risk analytics. This package is intended for professional developers and researchers.
 
@@ -25,6 +25,8 @@ Our quantitative systems support structured pricing, standardized contracts, and
 
 SIP participates actively in the markets we develop, providing liquidity, facilitating transactions, and supporting both physical and financial trading activity. By combining quantitative strategy, infrastructure, and market participation, SIP enables liquidity, price transparency, and sustainable market development.
 
+[Vist SIP Global](https://sipglobally.com/)
+
 ## Installation
 
 Install btQuant via PyPI:
@@ -37,9 +39,12 @@ pip install btQuant
 
 * Pure NumPy implementation for all mathematics
 * Optimized vectorized operations for performance
-* Consistent API with camelCase function names
 * Lightweight outputs using arrays and dictionaries
 * Production-ready code suitable for professional environments
+
+## Documentation
+
+Full documentation is available at [btQuant Documentation](https://btquant.readthedocs.io/en/latest/).
 
 ## Modules
 
@@ -234,10 +239,6 @@ covMatrix = np.array([[0.04, 0.01], [0.01, 0.09]])
 weights = riskParity(covMatrix)
 print(f"Risk parity weights: {weights}")
 ```
-
-## Documentation
-
-Full documentation will be available at [btQuant Documentation](https://btquant.readthedocs.io/en/latest/).
 
 ## Converting to Pandas or Polars
 
