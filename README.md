@@ -1,4 +1,4 @@
-# btQuant
+![btQuant By Sip Global](btQuant.jpg)
 
 btQuant is the Python companion package for Systematic Index Partners (SIP Global) quantitative infrastructure. It provides tools for quantitative finance, econometrics, simulation, portfolio optimization, and risk analytics. This package is intended for professional developers and researchers.
 
@@ -11,6 +11,8 @@ Systematic Index Partners (SIP Global) is a quantitative investment and market i
 Our quantitative systems support structured pricing, standardized contracts, and repeatable trading processes. These systems are deployed alongside physical and digital infrastructure, including trading hubs, delivery points, data pipelines, execution tools, and operational platforms to ensure markets function efficiently.  
 
 SIP participates actively in the markets we develop, providing liquidity, facilitating transactions, and supporting both physical and financial trading activity. By combining quantitative strategy, infrastructure, and market participation, SIP enables liquidity, price transparency, and sustainable market development.
+
+![Vist SIP Global](https://sipglobally.com/)
 
 ## Installation
 
