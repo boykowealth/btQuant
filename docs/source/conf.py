@@ -1,19 +1,37 @@
+# -- Path setup --------------------------------------------------------------
+
 import os
 import sys
-sys.path.insert(0, os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath('../../'))  # Add project root to sys.path
+
+# -- Project information -----------------------------------------------------
 
 project = 'btQuant'
 author = 'Brayden Boyko'
-release = '1.0.2'
+release = '0.1.0'
+
+# -- General configuration ---------------------------------------------------
 
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',
-    'sphinx_autodoc_typehints'
+    'sphinx.ext.napoleon',      # For Google-style docstrings
+    'sphinx.ext.viewcode',
+    'sphinx.ext.intersphinx',
 ]
 
 templates_path = ['_templates']
-exclude_patterns = []
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
-html_theme = 'sphinx_rtd_theme'
-html_static_path = ['_static']
+# Prevent duplicate object warnings
+autodoc_default_options = {
+    'members': True,
+    'undoc-members': True,
+    'show-inheritance': True,
+    'inherited-members': True,
+    'special-members': '__init__',
+    'exclude-members': '__weakref__',
+}
+
+# -- Options for HTML output -------------------------------------------------
+
+html_theme = 'alabaster'  # or 'sphinx_rtd_theme' if install_
