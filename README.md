@@ -26,9 +26,12 @@ pip install btQuant
 
 * Pure NumPy implementation for all mathematics
 * Optimized vectorized operations for performance
-* Consistent API with camelCase function names
 * Lightweight outputs using arrays and dictionaries
 * Production-ready code suitable for professional environments
+
+## Documentation
+
+Full documentation is available at [btQuant Documentation](https://btquant.readthedocs.io/en/latest/).
 
 ## Modules
 
@@ -223,10 +226,6 @@ covMatrix = np.array([[0.04, 0.01], [0.01, 0.09]])
 weights = riskParity(covMatrix)
 print(f"Risk parity weights: {weights}")
 ```
-
-## Documentation
-
-Full documentation will be available at [btQuant Documentation](https://btquant.readthedocs.io/en/latest/).
 
 ## Converting to Pandas or Polars
 
