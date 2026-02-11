@@ -2,7 +2,9 @@
 
 ## options.py
 
-### blackScholes(S, K, T, r, sigma, b=None, optType='call')
+## options.py
+
+### blackScholes(S, K, T, r, sigma, q=0.0, optType='call')
 
 **Purpose**: Price European options using Black-Scholes-Merton model with cost of carry.
 
@@ -12,13 +14,13 @@
 - $T$: Time to maturity (years)
 - $r$: Risk-free rate
 - $\sigma$: Volatility
-- $b$: Cost of carry (default: $r$)
+- $q$: Dividend yield or cost of carry adjustment
 - optType: 'call' or 'put'
 
 **Model**: 
 
 $$
-d_1 = \frac{\ln(S/K) + (b + 0.5\sigma^2)T}{\sigma\sqrt{T}}
+d_1 = \frac{\ln(S/K) + (r - q + 0.5\sigma^2)T}{\sigma\sqrt{T}}
 $$
 
 $$
@@ -27,23 +29,23 @@ $$
 
 Call price:
 $$
-C = Se^{(b-r)T}N(d_1) - Ke^{-rT}N(d_2)
+C = S e^{-qT} N(d_1) - K e^{-rT} N(d_2)
 $$
 
 Put price:
 $$
-P = Ke^{-rT}N(-d_2) - Se^{(b-r)T}N(-d_1)
+P = K e^{-rT} N(-d_2) - S e^{-qT} N(-d_1)
 $$
 
-**Applications**: Pricing stock options, index options, currency options, futures options. Cost of carry handles dividends ($b = r - q$), futures ($b = 0$), and foreign exchange ($b = r - r_f$).
+**Applications**: Stock options, index options, currency options, futures options.
 
 **Returns**: Dict with price, delta, gamma, vega, rho, theta.
 
 ---
 
-### binomial(S, K, T, r, sigma, b=None, N=100, optType='call', american=False)
+### binomial(S, K, T, r, sigma, q=0.0, N=100, optType='call', american=False)
 
-**Purpose**: Price options using binomial tree method.
+**Purpose**: Price options using a binomial tree (European or American).
 
 **Inputs**:
 - $N$: Number of time steps
@@ -56,34 +58,38 @@ u = e^{\sigma\sqrt{\Delta t}}, \quad d = \frac{1}{u}
 $$
 
 $$
-q = \frac{e^{b\Delta t} - d}{u - d}
+p = \frac{e^{(r-q)\Delta t} - d}{u - d}
 $$
 
-Option value:
+Option value recursion:
 $$
-V_i = e^{-r\Delta t}[qV_{i,u} + (1-q)V_{i,d}]
+V_i = e^{-r\Delta t}[p V_{i,u} + (1-p) V_{i,d}]
 $$
 
 For American options: $V_i = \max(V_i, \text{intrinsic value})$
 
-**Applications**: American options, early exercise features, discrete dividends.
+**Applications**: American options, early exercise, discrete dividends.
 
 **Returns**: Dict with price, delta, gamma, theta.
 
 ---
 
-### trinomial(S, K, T, r, sigma, b=None, N=50, optType='call', american=False)
+### trinomial(S, K, T, r, sigma, q=0.0, N=50, optType='call', american=False)
 
 **Purpose**: Price options using trinomial tree (more stable than binomial).
 
 **Model**:
 
 $$
-\Delta x = \sigma\sqrt{3\Delta t}
+\Delta x = \sigma \sqrt{3 \Delta t}
 $$
 
 $$
-p_u = \frac{1}{6} + \frac{(b - 0.5\sigma^2)\Delta t}{2\Delta x}, \quad p_d = \frac{1}{6} - \frac{(b - 0.5\sigma^2)\Delta t}{2\Delta x}, \quad p_m = \frac{2}{3}
+p_u = 0.5\left(\frac{\sigma^2 \Delta t + \nu^2 \Delta t^2}{\Delta x^2} + \frac{\nu \Delta t}{\Delta x}\right), 
+\quad
+p_d = 0.5\left(\frac{\sigma^2 \Delta t + \nu^2 \Delta t^2}{\Delta x^2} - \frac{\nu \Delta t}{\Delta x}\right), 
+\quad
+p_m = 1 - p_u - p_d
 $$
 
 **Applications**: American options, barrier options, improved accuracy over binomial.
@@ -92,31 +98,32 @@ $$
 
 ---
 
-### asian(S, K, T, r, sigma, b=None, nSteps=100, optType='call')
+### asian(S, K, T, r, sigma, q=0.0, nSteps=100, optType='call', avgType='geometric')
 
-**Purpose**: Price Asian options with geometric averaging.
+**Purpose**: Price Asian options (geometric averaging).
 
 **Model**:
 
 $$
-\sigma_A = \sigma\sqrt{\frac{(n+1)(2n+1)}{6n^2}}
+\sigma_A = \sigma \sqrt{\frac{(n+1)(2n+1)}{6 n^2}}
 $$
 
+Adjusted drift:
 $$
-b_A = 0.5(b - 0.5\sigma^2) + 0.5\sigma_A^2
+b_A = 0.5 (r - q - 0.5 \sigma^2) + 0.5 \sigma_A^2
 $$
 
-Then use Black-Scholes with adjusted parameters $\sigma_A$ and $b_A$.
+Use Black-Scholes formula with $\sigma_A$ and $b_A$.
 
-**Applications**: Commodity averaging contracts, reduce manipulation risk, volatility smoothing.
+**Applications**: Commodity averaging contracts, volatility smoothing, manipulation reduction.
 
 **Returns**: Dict with price, delta, gamma, vega, rho, theta.
 
 ---
 
-### binary(S, K, T, r, sigma, b=None, optType='call')
+### binary(S, K, T, r, sigma, q=0.0, optType='call')
 
-**Purpose**: Price binary (digital) options that pay fixed amount at expiry.
+**Purpose**: Price binary (digital) options paying fixed amount at expiry.
 
 **Model**:
 
@@ -124,47 +131,76 @@ Call payoff: $\mathbb{1}_{S_T > K}$
 
 Price:
 $$
-C = e^{-rT}N(d_2)
+C = e^{-rT} N(d_2)
 $$
 
-**Applications**: Binary bets, structured products, digital barrier features.
+**Applications**: Binary bets, structured products, digital barrier options.
 
 **Returns**: Dict with price, delta, gamma, vega, rho, theta.
 
 ---
 
-### monteCarlo(S, K, T, r, sigma, b=None, nSims=10000, nSteps=100, optType='call', american=False, seed=None)
+### spread(S1, S2, K, T, r, sigma1, sigma2, rho, q1=0.0, q2=0.0, optType='call')
 
-**Purpose**: Price options via Monte Carlo simulation with Longstaff-Schwartz for American options.
+**Purpose**: Price spread options (difference between two underlyings).
 
-**Model**:
+**Model**: Margrabe-type approximation with correlation adjustment.
 
-Simulate paths:
-$$
-S_{t+1} = S_t e^{(b - 0.5\sigma^2)\Delta t + \sigma\sqrt{\Delta t}Z}
-$$
+**Applications**: Commodity spreads, index spreads, multi-asset derivatives.
 
-For American options, use backward induction with regression to estimate continuation value.
-
-**Applications**: Path-dependent options, American options, high-dimensional problems.
-
-**Returns**: Dict with price, stderr (standard error).
+**Returns**: Dict with price, delta1, delta2, gamma1, gamma2, vega1, vega2.
 
 ---
 
-### impliedVol(price, S, K, T, r, optType='call', b=None, tol=1e-6, maxIter=100)
+### barrier(S, K, T, r, sigma, barrierLevel, q=0.0, optType='call', barrierType='down-and-out', rebate=0.0)
 
-**Purpose**: Calculate implied volatility from market price using Newton-Raphson.
+**Purpose**: Price barrier options (knock-in / knock-out).
 
-**Model**:
+**Applications**: Exotic options, risk management, structured products.
 
-$$
-\sigma_{n+1} = \sigma_n - \frac{C_{BS}(\sigma_n) - C_{market}}{\text{vega}(\sigma_n)}
-$$
+**Returns**: Dict with price, delta, gamma, vega.
 
-**Applications**: Market volatility estimation, volatility surfaces, relative value trading.
+---
+
+### simulate(pricingModel, paths, r, T, **modelParams)
+
+**Purpose**: Monte Carlo simulation of option prices using custom pricing function.
+
+**Applications**: Validate analytic models, path-dependent simulations, stress testing.
+
+**Returns**: Dict with price, stderr.
+
+---
+
+### impliedVol(price, S, K, T, r, optType='call', q=0.0, tol=1e-6, maxIter=100)
+
+**Purpose**: Calculate implied volatility from market price.
+
+**Model**: Newton-Raphson iteration on Black-Scholes vega.
+
+**Applications**: Volatility surfaces, relative value trading, market calibration.
 
 **Returns**: Implied volatility $\sigma$.
+
+---
+
+### buildForwardCurve(spotPrice, tenors, rates, storageCosts=None, convenienceYields=None)
+
+**Purpose**: Build forward curve with storage costs and convenience yields.
+
+**Applications**: Commodity forward pricing, curve modeling.
+
+**Returns**: Numpy array of forward prices.
+
+---
+
+### bootstrapCurve(spotPrice, futuresPrices, tenors, assumedRate=0.05)
+
+**Purpose**: Bootstrap convenience yields and storage costs from futures prices.
+
+**Applications**: Commodity curve calibration, curve construction.
+
+**Returns**: Dict with convenience_yields, storage_costs.
 
 ---
 
