@@ -1,0 +1,340 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>distributions module &mdash; btQuant 1.0.2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=1ed6394b"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            btQuant
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Modules</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="options.html">options module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="econometrics.html">econometrics module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ml.html">ml module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="portfolio.html">portfolio module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="risk.html">risk module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sim.html">sim module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dimension.html">dimension module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="factor.html">factor module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fit.html">fit module</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">btQuant</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">distributions module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/distribution.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="distributions-module">
+<h1>distributions module<a class="headerlink" href="#distributions-module" title="Link to this heading"></a></h1>
+<dl class="py function" id="module-btQuant.distributions">
+<dt class="sig sig-object py" id="btQuant.distributions.adTest">
+<span class="sig-prename descclassname"><span class="pre">btQuant.distributions.</span></span><span class="sig-name descname"><span class="pre">adTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'normal'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#btQuant.distributions.adTest" title="Link to this definition"></a></dt>
+<dd><p>Anderson-Darling test for normality.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – array of observations</p></li>
+<li><p><strong>distName</strong> – currently only ‘normal’ supported</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict with statistic, critical values</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="btQuant.distributions.fitBeta">
+<span class="sig-prename descclassname"><span class="pre">btQuant.distributions.</span></span><span class="sig-name descname"><span class="pre">fitBeta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxIter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#btQuant.distributions.fitBeta" title="Link to this definition"></a></dt>
+<dd><p>Fit beta distribution using method of moments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – array of observations in (0, 1)</p></li>
+<li><p><strong>maxIter</strong> – maximum iterations</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict with alpha, beta parameters, logLikelihood</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="btQuant.distributions.fitExponential">
+<span class="sig-prename descclassname"><span class="pre">btQuant.distributions.</span></span><span class="sig-name descname"><span class="pre">fitExponential</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#btQuant.distributions.fitExponential" title="Link to this definition"></a></dt>
+<dd><p>Fit exponential distribution.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data</strong> – array of positive observations</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict with lambda (rate), logLikelihood</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="btQuant.distributions.fitGamma">
+<span class="sig-prename descclassname"><span class="pre">btQuant.distributions.</span></span><span class="sig-name descname"><span class="pre">fitGamma</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxIter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#btQuant.distributions.fitGamma" title="Link to this definition"></a></dt>
+<dd><p>Fit gamma distribution using method of moments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – array of positive observations</p></li>
+<li><p><strong>maxIter</strong> – maximum iterations</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict with alpha (shape), beta (rate), logLikelihood</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="btQuant.distributions.fitLognormal">
+<span class="sig-prename descclassname"><span class="pre">btQuant.distributions.</span></span><span class="sig-name descname"><span class="pre">fitLognormal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#btQuant.distributions.fitLognormal" title="Link to this definition"></a></dt>
+<dd><p>Fit lognormal distribution.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data</strong> – array of positive observations</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict with mu, sigma (of log), logLikelihood</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="btQuant.distributions.fitMixture">
+<span class="sig-prename descclassname"><span class="pre">btQuant.distributions.</span></span><span class="sig-name descname"><span class="pre">fitMixture</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nComponents</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxIter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#btQuant.distributions.fitMixture" title="Link to this definition"></a></dt>
+<dd><p>Fit Gaussian mixture model using EM algorithm.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – array of observations</p></li>
+<li><p><strong>nComponents</strong> – number of mixture components</p></li>
+<li><p><strong>maxIter</strong> – maximum iterations</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict with means, sigmas, weights</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="btQuant.distributions.fitNormal">
+<span class="sig-prename descclassname"><span class="pre">btQuant.distributions.</span></span><span class="sig-name descname"><span class="pre">fitNormal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#btQuant.distributions.fitNormal" title="Link to this definition"></a></dt>
+<dd><p>Fit normal distribution.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data</strong> – array of observations</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict with mu, sigma, logLikelihood</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="btQuant.distributions.fitT">
+<span class="sig-prename descclassname"><span class="pre">btQuant.distributions.</span></span><span class="sig-name descname"><span class="pre">fitT</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxIter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#btQuant.distributions.fitT" title="Link to this definition"></a></dt>
+<dd><p>Fit Student’s t distribution.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – array of observations</p></li>
+<li><p><strong>maxIter</strong> – maximum iterations</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict with df (degrees of freedom), mu, sigma, logLikelihood</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="btQuant.distributions.jsDivergence">
+<span class="sig-prename descclassname"><span class="pre">btQuant.distributions.</span></span><span class="sig-name descname"><span class="pre">jsDivergence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#btQuant.distributions.jsDivergence" title="Link to this definition"></a></dt>
+<dd><p>Jensen-Shannon divergence.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>p</strong> – first distribution</p></li>
+<li><p><strong>q</strong> – second distribution</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>JS divergence</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="btQuant.distributions.klDivergence">
+<span class="sig-prename descclassname"><span class="pre">btQuant.distributions.</span></span><span class="sig-name descname"><span class="pre">klDivergence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#btQuant.distributions.klDivergence" title="Link to this definition"></a></dt>
+<dd><p>Kullback-Leibler divergence.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>p</strong> – true distribution (probabilities)</p></li>
+<li><p><strong>q</strong> – approximate distribution (probabilities)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>KL divergence</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="btQuant.distributions.ksTest">
+<span class="sig-prename descclassname"><span class="pre">btQuant.distributions.</span></span><span class="sig-name descname"><span class="pre">ksTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'normal'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#btQuant.distributions.ksTest" title="Link to this definition"></a></dt>
+<dd><p>Kolmogorov-Smirnov test for distribution fit.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – array of observations</p></li>
+<li><p><strong>distName</strong> – ‘normal’, ‘lognormal’, ‘exponential’</p></li>
+<li><p><strong>params</strong> – dict of distribution parameters (if None, estimated)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict with statistic, pValue (approximate)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="btQuant.distributions.moments">
+<span class="sig-prename descclassname"><span class="pre">btQuant.distributions.</span></span><span class="sig-name descname"><span class="pre">moments</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#btQuant.distributions.moments" title="Link to this definition"></a></dt>
+<dd><p>Calculate distribution moments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data</strong> – array of observations</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict with mean, variance, skewness, kurtosis</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="btQuant.distributions.qqPlot">
+<span class="sig-prename descclassname"><span class="pre">btQuant.distributions.</span></span><span class="sig-name descname"><span class="pre">qqPlot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'normal'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#btQuant.distributions.qqPlot" title="Link to this definition"></a></dt>
+<dd><p>Generate Q-Q plot data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – array of observations</p></li>
+<li><p><strong>distName</strong> – reference distribution</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict with theoretical and empirical quantiles</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="btQuant.distributions.quantile">
+<span class="sig-prename descclassname"><span class="pre">btQuant.distributions.</span></span><span class="sig-name descname"><span class="pre">quantile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#btQuant.distributions.quantile" title="Link to this definition"></a></dt>
+<dd><p>Calculate quantile.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – array of observations</p></li>
+<li><p><strong>q</strong> – quantile level (0 to 1)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>quantile value</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
