@@ -39,9 +39,12 @@ Option pricing and Greeks calculation
 - `trinomial()` Trinomial tree (European/American)
 - `asian()` Asian options (geometric averaging)
 - `binary()` Binary/digital options
-- `monteCarlo()` Monte Carlo pricing with LSM for American options
+- `spread()` Two-asset spread options
+- `barrier()` Barrier options with rebate
+- `simulate()` Monte Carlo simulation wrapper
 - `impliedVol()` Implied volatility calculation
-- `generateRange()` Batch pricing across parameter ranges
+- `buildForwardCurve()` Forward curve construction
+- `bootstrapCurve()` Bootstrap convenience yields from futures
 
 ### econometrics.py
 Econometric analysis and hypothesis testing
