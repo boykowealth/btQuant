@@ -13,5 +13,4 @@ python:
 
 sphinx:
   configuration: docs/source/conf.py
-  builder: html
-  output: $READTHEDOCS_OUTPUT/html  # Add this line
+  builder: html  # RTD will automatically use $READTHEDOCS_OUTPUT/html
