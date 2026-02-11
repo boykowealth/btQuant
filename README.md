@@ -12,7 +12,7 @@ Our quantitative systems support structured pricing, standardized contracts, and
 
 SIP participates actively in the markets we develop, providing liquidity, facilitating transactions, and supporting both physical and financial trading activity. By combining quantitative strategy, infrastructure, and market participation, SIP enables liquidity, price transparency, and sustainable market development.
 
-![Vist SIP Global](https://sipglobally.com/)
+[Vist SIP Global](https://sipglobally.com/)
 
 ## Installation
 
