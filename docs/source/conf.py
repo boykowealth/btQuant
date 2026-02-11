@@ -34,4 +34,4 @@ autodoc_default_options = {
 
 # -- Options for HTML output -------------------------------------------------
 
-html_theme = 'alabaster'  # or 'sphinx_rtd_theme' if install_
+html_theme = 'sphinx_rtd_theme'
