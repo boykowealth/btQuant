@@ -1,13 +1,46 @@
 import numpy as np
 
 def _normCdf(x):
+    """
+    Approximate cumulative distribution function of standard normal distribution.
+    
+    Parameters:
+        x: input value
+    
+    Returns:
+        float: CDF value at x
+    """
     return 0.5 * (1.0 + np.tanh(x / np.sqrt(2.0) * 0.7978845608))
 
 def _normPdf(x):
+    """
+    Probability density function of standard normal distribution.
+    
+    Parameters:
+        x: input value
+    
+    Returns:
+        float: PDF value at x
+    """
     return np.exp(-0.5 * x * x) / np.sqrt(2.0 * np.pi)
 
 
 def blackScholes(S, K, T, r, sigma, q=0.0, optType='call'):
+    """
+    Black-Scholes option pricing model with Greeks.
+    
+    Parameters:
+        S: current stock price
+        K: strike price
+        T: time to maturity (years)
+        r: risk-free rate
+        sigma: volatility
+        q: dividend yield
+        optType: 'call' or 'put'
+    
+    Returns:
+        dict: price, delta, gamma, vega, rho, theta
+    """
     sqrtT = np.sqrt(T)
     d1 = (np.log(S / K) + (r - q + 0.5 * sigma**2) * T) / (sigma * sqrtT)
     d2 = d1 - sigma * sqrtT
@@ -35,6 +68,21 @@ def blackScholes(S, K, T, r, sigma, q=0.0, optType='call'):
 
 
 def binary(S, K, T, r, sigma, q=0.0, optType='call'):
+    """
+    Binary (digital) option pricing with Greeks.
+    
+    Parameters:
+        S: current stock price
+        K: strike price
+        T: time to maturity (years)
+        r: risk-free rate
+        sigma: volatility
+        q: dividend yield
+        optType: 'call' or 'put'
+    
+    Returns:
+        dict: price, delta, gamma, vega, rho, theta
+    """
     sqrtT = np.sqrt(T)
     d1 = (np.log(S / K) + (r - q + 0.5 * sigma**2) * T) / (sigma * sqrtT)
     d2 = d1 - sigma * sqrtT
@@ -57,6 +105,25 @@ def binary(S, K, T, r, sigma, q=0.0, optType='call'):
 
 
 def spread(S1, S2, K, T, r, sigma1, sigma2, rho, q1=0.0, q2=0.0, optType='call'):
+    """
+    Spread option pricing (option on the difference between two assets).
+    
+    Parameters:
+        S1: current price of asset 1
+        S2: current price of asset 2
+        K: strike price
+        T: time to maturity (years)
+        r: risk-free rate
+        sigma1: volatility of asset 1
+        sigma2: volatility of asset 2
+        rho: correlation between assets
+        q1: dividend yield of asset 1
+        q2: dividend yield of asset 2
+        optType: 'call' or 'put'
+    
+    Returns:
+        dict: price, delta1, delta2, gamma1, gamma2, vega1, vega2
+    """
     F1 = S1 * np.exp((r - q1) * T)
     F2 = S2 * np.exp((r - q2) * T)
     F2K = F2 + K
@@ -93,6 +160,24 @@ def spread(S1, S2, K, T, r, sigma1, sigma2, rho, q1=0.0, q2=0.0, optType='call')
 
 
 def barrier(S, K, T, r, sigma, barrierLevel, q=0.0, optType='call', barrierType='down-and-out', rebate=0.0):
+    """
+    Barrier option pricing (option that activates or deactivates at a barrier level).
+    
+    Parameters:
+        S: current stock price
+        K: strike price
+        T: time to maturity (years)
+        r: risk-free rate
+        sigma: volatility
+        barrierLevel: barrier price level
+        q: dividend yield
+        optType: 'call' or 'put'
+        barrierType: 'down-and-out', 'down-and-in', 'up-and-out', 'up-and-in'
+        rebate: rebate payment if barrier is hit
+    
+    Returns:
+        dict: price, delta, gamma, vega
+    """
     mu = (r - q - 0.5 * sigma**2) / sigma**2
     sqrtT = np.sqrt(T)
     y = np.log(barrierLevel**2 / (S * K)) / (sigma * sqrtT)
@@ -173,6 +258,23 @@ def barrier(S, K, T, r, sigma, barrierLevel, q=0.0, optType='call', barrierType=
 
 
 def asian(S, K, T, r, sigma, q=0.0, nSteps=100, optType='call', avgType='geometric'):
+    """
+    Asian option pricing (option on average price).
+    
+    Parameters:
+        S: current stock price
+        K: strike price
+        T: time to maturity (years)
+        r: risk-free rate
+        sigma: volatility
+        q: dividend yield
+        nSteps: number of averaging steps
+        optType: 'call' or 'put'
+        avgType: 'geometric' or 'arithmetic'
+    
+    Returns:
+        dict: price, delta, gamma, vega, rho, theta (or price, stderr for arithmetic)
+    """
     if avgType == 'geometric':
         dt = T / nSteps
         sigmaAdj = sigma * np.sqrt((nSteps + 1) * (2 * nSteps + 1) / (6 * nSteps**2))
@@ -251,6 +353,23 @@ def asian(S, K, T, r, sigma, q=0.0, nSteps=100, optType='call', avgType='geometr
 
 
 def binomial(S, K, T, r, sigma, q=0.0, N=100, optType='call', american=False):
+    """
+    Binomial tree option pricing model.
+    
+    Parameters:
+        S: current stock price
+        K: strike price
+        T: time to maturity (years)
+        r: risk-free rate
+        sigma: volatility
+        q: dividend yield
+        N: number of time steps
+        optType: 'call' or 'put'
+        american: True for American options, False for European
+    
+    Returns:
+        dict: price, delta, gamma, theta
+    """
     dt = T / N
     u = np.exp(sigma * np.sqrt(dt))
     d = 1.0 / u
@@ -298,6 +417,23 @@ def binomial(S, K, T, r, sigma, q=0.0, N=100, optType='call', american=False):
 
 
 def trinomial(S, K, T, r, sigma, q=0.0, N=50, optType='call', american=False):
+    """
+    Trinomial tree option pricing model.
+    
+    Parameters:
+        S: current stock price
+        K: strike price
+        T: time to maturity (years)
+        r: risk-free rate
+        sigma: volatility
+        q: dividend yield
+        N: number of time steps
+        optType: 'call' or 'put'
+        american: True for American options, False for European
+    
+    Returns:
+        dict: price, delta, gamma, theta
+    """
     dt = T / N
     dx = sigma * np.sqrt(3 * dt)
     nu = r - q - 0.5 * sigma**2
@@ -340,6 +476,19 @@ def trinomial(S, K, T, r, sigma, q=0.0, N=50, optType='call', american=False):
 
 
 def simulate(pricingModel, paths, r, T, **modelParams):
+    """
+    Monte Carlo simulation wrapper for option pricing.
+    
+    Parameters:
+        pricingModel: pricing function to use
+        paths: simulated price paths (nSims x nSteps)
+        r: risk-free rate
+        T: time to maturity (years)
+        **modelParams: additional parameters for pricing model
+    
+    Returns:
+        dict: price, stderr
+    """
     nSims = paths.shape[0]
     payoffs = np.zeros(nSims)
     
@@ -354,6 +503,23 @@ def simulate(pricingModel, paths, r, T, **modelParams):
 
 
 def impliedVol(price, S, K, T, r, optType='call', q=0.0, tol=1e-6, maxIter=100):
+    """
+    Calculate implied volatility using Newton-Raphson method.
+    
+    Parameters:
+        price: observed option price
+        S: current stock price
+        K: strike price
+        T: time to maturity (years)
+        r: risk-free rate
+        optType: 'call' or 'put'
+        q: dividend yield
+        tol: convergence tolerance
+        maxIter: maximum iterations
+    
+    Returns:
+        float: implied volatility (or np.nan if not converged)
+    """
     sigma = 0.3
     
     for i in range(maxIter):
@@ -376,6 +542,19 @@ def impliedVol(price, S, K, T, r, optType='call', q=0.0, tol=1e-6, maxIter=100):
 
 
 def buildForwardCurve(spotPrice, tenors, rates, storageCosts=None, convenienceYields=None):
+    """
+    Build forward curve for commodities or other assets.
+    
+    Parameters:
+        spotPrice: current spot price
+        tenors: time to maturity array (years)
+        rates: risk-free rates array
+        storageCosts: storage cost rates array
+        convenienceYields: convenience yield rates array
+    
+    Returns:
+        array: forward prices
+    """
     if storageCosts is None:
         storageCosts = np.zeros_like(tenors)
     if convenienceYields is None:
@@ -386,6 +565,18 @@ def buildForwardCurve(spotPrice, tenors, rates, storageCosts=None, convenienceYi
 
 
 def bootstrapCurve(spotPrice, futuresPrices, tenors, assumedRate=0.05):
+    """
+    Bootstrap convenience yields from futures prices.
+    
+    Parameters:
+        spotPrice: current spot price
+        futuresPrices: observed futures prices array
+        tenors: time to maturity array (years)
+        assumedRate: assumed risk-free rate
+    
+    Returns:
+        dict: convenience_yields, storage_costs
+    """
     convenienceYields = assumedRate - np.log(futuresPrices / spotPrice) / tenors
     storageCosts = np.zeros_like(tenors)
     

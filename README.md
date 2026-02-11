@@ -224,7 +224,7 @@ print(f"Risk parity weights: {weights}")
 
 ## Documentation
 
-Full documentation will be available at [btQuant Documentation](https://btquant.readthedocs.io).
+Full documentation will be available at [btQuant Documentation](https://btquant.readthedocs.io/en/latest/).
 
 ## Converting to Pandas or Polars
 

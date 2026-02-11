@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: btQuant
-Version: 1.0.2
+Version: 1.0.3
 Summary: Boyko Terminal Quantitative Finance Python Package Companion.
 Author-email: Brayden Boyko <braydenboyko@boykowealth.com>
 License: GPL
@@ -237,7 +237,7 @@ print(f"Risk parity weights: {weights}")
 
 ## Documentation
 
-Full documentation will be available at [btQuant Documentation](https://btquant.readthedocs.io).
+Full documentation will be available at [btQuant Documentation](https://btquant.readthedocs.io/en/latest/).
 
 ## Converting to Pandas or Polars
 
