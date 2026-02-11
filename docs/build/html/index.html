@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>btQuant documentation &mdash; btQuant 1.0.2 documentation</title>
+  <title>btQuant Documentation &mdash; btQuant 1.0.2 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
@@ -18,7 +18,8 @@
       <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" /> 
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="options module" href="options.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -40,11 +41,19 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <!-- Local TOC -->
-              <div class="local-toc"><ul>
-<li><a class="reference internal" href="#">btQuant documentation</a></li>
+              <p class="caption" role="heading"><span class="caption-text">Modules</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="options.html">options module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="econometrics.html">econometrics module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ml.html">ml module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="portfolio.html">portfolio module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="risk.html">risk module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sim.html">sim module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dimension.html">dimension module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="factor.html">factor module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fit.html">fit module</a></li>
 </ul>
-</div>
+
         </div>
       </div>
     </nav>
@@ -59,7 +68,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">btQuant documentation</li>
+      <li class="breadcrumb-item active">btQuant Documentation</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -70,18 +79,188 @@
            <div itemprop="articleBody">
              
   <section id="btquant-documentation">
-<h1>btQuant documentation<a class="headerlink" href="#btquant-documentation" title="Link to this heading"></a></h1>
-<p>Add your content using <code class="docutils literal notranslate"><span class="pre">reStructuredText</span></code> syntax. See the
-<a class="reference external" href="https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html">reStructuredText</a>
-documentation for details.</p>
+<h1>btQuant Documentation<a class="headerlink" href="#btquant-documentation" title="Link to this heading"></a></h1>
+<p>Welcome to btQuant’s official documentation.</p>
+</section>
+<section id="about-systematic-index-partners">
+<h1>About Systematic Index Partners<a class="headerlink" href="#about-systematic-index-partners" title="Link to this heading"></a></h1>
+<p>Systematic Index Partners (SIP Global) is a quantitative investment and market infrastructure firm focused on alternative and underdeveloped markets. We specialize in building systematic trading strategies, indices, and real-world infrastructure that enable market making, brokerage, and price discovery in markets with low liquidity or no existing financial trading framework.</p>
+<p>Our work centers on transforming traditionally opaque or fragmented industries into organized, tradable markets. We design proprietary quantitative systems in-house to support structured pricing, standardized contracts, and repeatable trading processes. These systems are deployed alongside physical and digital infrastructure, including centralized trading hubs, delivery points, data pipelines, execution tools, and operational platforms that allow markets to function efficiently.</p>
+<p>Systematic Index Partners actively participates in the markets we develop by providing liquidity, facilitating transactions, and supporting both physical and financial trading activity. Our indices and trading frameworks serve as the foundation for market making, brokerage services, and structured products, enabling participants to hedge risk, transact efficiently, and gain transparent exposure to alternative assets.</p>
+<p>We focus on markets that lack institutional structure, reliable benchmarks, or scalable trading systems. By combining quantitative strategy, infrastructure development, and active market participation, we create the conditions necessary for liquidity, price transparency, and long-term market viability.</p>
+<p>Systematic Index Partners is not a traditional asset manager or index publisher. We are a market builder, applying quantitative discipline and infrastructure to unlock new markets and improve existing ones, bringing modern trading standards to alternative asset classes where they have historically not existed.</p>
+</section>
+<section id="contents">
+<h1>Contents:<a class="headerlink" href="#contents" title="Link to this heading"></a></h1>
 <div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Modules</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="options.html">options module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="options.html#btQuant.options.asian"><code class="docutils literal notranslate"><span class="pre">asian()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="options.html#btQuant.options.barrier"><code class="docutils literal notranslate"><span class="pre">barrier()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="options.html#btQuant.options.binary"><code class="docutils literal notranslate"><span class="pre">binary()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="options.html#btQuant.options.binomial"><code class="docutils literal notranslate"><span class="pre">binomial()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="options.html#btQuant.options.blackScholes"><code class="docutils literal notranslate"><span class="pre">blackScholes()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="options.html#btQuant.options.bootstrapCurve"><code class="docutils literal notranslate"><span class="pre">bootstrapCurve()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="options.html#btQuant.options.buildForwardCurve"><code class="docutils literal notranslate"><span class="pre">buildForwardCurve()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="options.html#btQuant.options.impliedVol"><code class="docutils literal notranslate"><span class="pre">impliedVol()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="options.html#btQuant.options.simulate"><code class="docutils literal notranslate"><span class="pre">simulate()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="options.html#btQuant.options.spread"><code class="docutils literal notranslate"><span class="pre">spread()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="options.html#btQuant.options.trinomial"><code class="docutils literal notranslate"><span class="pre">trinomial()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="econometrics.html">econometrics module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="econometrics.html#btQuant.econometrics.adfTest"><code class="docutils literal notranslate"><span class="pre">adfTest()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="econometrics.html#btQuant.econometrics.breuschPaganTest"><code class="docutils literal notranslate"><span class="pre">breuschPaganTest()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="econometrics.html#btQuant.econometrics.durbinWatson"><code class="docutils literal notranslate"><span class="pre">durbinWatson()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="econometrics.html#btQuant.econometrics.grangerCausality"><code class="docutils literal notranslate"><span class="pre">grangerCausality()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="econometrics.html#btQuant.econometrics.kpssTest"><code class="docutils literal notranslate"><span class="pre">kpssTest()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="econometrics.html#btQuant.econometrics.ljungBox"><code class="docutils literal notranslate"><span class="pre">ljungBox()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="econometrics.html#btQuant.econometrics.ols"><code class="docutils literal notranslate"><span class="pre">ols()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="econometrics.html#btQuant.econometrics.whiteTest"><code class="docutils literal notranslate"><span class="pre">whiteTest()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ml.html">ml module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ml.html#btQuant.ml.anomalyScore"><code class="docutils literal notranslate"><span class="pre">anomalyScore()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="ml.html#btQuant.ml.decisionTree"><code class="docutils literal notranslate"><span class="pre">decisionTree()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="ml.html#btQuant.ml.gradientBoosting"><code class="docutils literal notranslate"><span class="pre">gradientBoosting()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="ml.html#btQuant.ml.isolationForest"><code class="docutils literal notranslate"><span class="pre">isolationForest()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="ml.html#btQuant.ml.kmeans"><code class="docutils literal notranslate"><span class="pre">kmeans()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="ml.html#btQuant.ml.knn"><code class="docutils literal notranslate"><span class="pre">knn()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="ml.html#btQuant.ml.lda"><code class="docutils literal notranslate"><span class="pre">lda()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="ml.html#btQuant.ml.logisticRegression"><code class="docutils literal notranslate"><span class="pre">logisticRegression()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="ml.html#btQuant.ml.naiveBayes"><code class="docutils literal notranslate"><span class="pre">naiveBayes()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="ml.html#btQuant.ml.pca"><code class="docutils literal notranslate"><span class="pre">pca()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="ml.html#btQuant.ml.predictTree"><code class="docutils literal notranslate"><span class="pre">predictTree()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="ml.html#btQuant.ml.randomForest"><code class="docutils literal notranslate"><span class="pre">randomForest()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="ml.html#btQuant.ml.regressionTree"><code class="docutils literal notranslate"><span class="pre">regressionTree()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="portfolio.html">portfolio module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="portfolio.html#btQuant.portfolio.blackLitterman"><code class="docutils literal notranslate"><span class="pre">blackLitterman()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="portfolio.html#btQuant.portfolio.efficientFrontier"><code class="docutils literal notranslate"><span class="pre">efficientFrontier()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="portfolio.html#btQuant.portfolio.equalWeight"><code class="docutils literal notranslate"><span class="pre">equalWeight()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="portfolio.html#btQuant.portfolio.hierarchicalRiskParity"><code class="docutils literal notranslate"><span class="pre">hierarchicalRiskParity()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="portfolio.html#btQuant.portfolio.maxDiversification"><code class="docutils literal notranslate"><span class="pre">maxDiversification()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="portfolio.html#btQuant.portfolio.maxReturn"><code class="docutils literal notranslate"><span class="pre">maxReturn()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="portfolio.html#btQuant.portfolio.maxSharpe"><code class="docutils literal notranslate"><span class="pre">maxSharpe()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="portfolio.html#btQuant.portfolio.meanVariance"><code class="docutils literal notranslate"><span class="pre">meanVariance()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="portfolio.html#btQuant.portfolio.minCvar"><code class="docutils literal notranslate"><span class="pre">minCvar()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="portfolio.html#btQuant.portfolio.minVariance"><code class="docutils literal notranslate"><span class="pre">minVariance()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="portfolio.html#btQuant.portfolio.riskParity"><code class="docutils literal notranslate"><span class="pre">riskParity()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="portfolio.html#btQuant.portfolio.tangency"><code class="docutils literal notranslate"><span class="pre">tangency()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="risk.html">risk module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.beta"><code class="docutils literal notranslate"><span class="pre">beta()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.calmarRatio"><code class="docutils literal notranslate"><span class="pre">calmarRatio()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.capturRatio"><code class="docutils literal notranslate"><span class="pre">capturRatio()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.conditionalValueAtRisk"><code class="docutils literal notranslate"><span class="pre">conditionalValueAtRisk()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.downsideDeviation"><code class="docutils literal notranslate"><span class="pre">downsideDeviation()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.drawdown"><code class="docutils literal notranslate"><span class="pre">drawdown()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.excessKurtosis"><code class="docutils literal notranslate"><span class="pre">excessKurtosis()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.expectedShortfall"><code class="docutils literal notranslate"><span class="pre">expectedShortfall()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.hillTailIndex"><code class="docutils literal notranslate"><span class="pre">hillTailIndex()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.historicalCvar"><code class="docutils literal notranslate"><span class="pre">historicalCvar()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.historicalVar"><code class="docutils literal notranslate"><span class="pre">historicalVar()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.informationRatio"><code class="docutils literal notranslate"><span class="pre">informationRatio()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.maxDrawdownDuration"><code class="docutils literal notranslate"><span class="pre">maxDrawdownDuration()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.modifiedVar"><code class="docutils literal notranslate"><span class="pre">modifiedVar()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.omegaRatio"><code class="docutils literal notranslate"><span class="pre">omegaRatio()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.painIndex"><code class="docutils literal notranslate"><span class="pre">painIndex()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.parametricCvar"><code class="docutils literal notranslate"><span class="pre">parametricCvar()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.parametricVar"><code class="docutils literal notranslate"><span class="pre">parametricVar()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.sharpeRatio"><code class="docutils literal notranslate"><span class="pre">sharpeRatio()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.sortinoRatio"><code class="docutils literal notranslate"><span class="pre">sortinoRatio()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.stabilityRatio"><code class="docutils literal notranslate"><span class="pre">stabilityRatio()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.tailRatio"><code class="docutils literal notranslate"><span class="pre">tailRatio()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.trackingError"><code class="docutils literal notranslate"><span class="pre">trackingError()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.treynorRatio"><code class="docutils literal notranslate"><span class="pre">treynorRatio()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.ulcerIndex"><code class="docutils literal notranslate"><span class="pre">ulcerIndex()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="risk.html#btQuant.risk.valueAtRisk"><code class="docutils literal notranslate"><span class="pre">valueAtRisk()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="sim.html">sim module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sim.html#btQuant.sim.ar1"><code class="docutils literal notranslate"><span class="pre">ar1()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sim.html#btQuant.sim.arch"><code class="docutils literal notranslate"><span class="pre">arch()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sim.html#btQuant.sim.arma"><code class="docutils literal notranslate"><span class="pre">arma()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sim.html#btQuant.sim.cir"><code class="docutils literal notranslate"><span class="pre">cir()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sim.html#btQuant.sim.compoundPoisson"><code class="docutils literal notranslate"><span class="pre">compoundPoisson()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sim.html#btQuant.sim.garch"><code class="docutils literal notranslate"><span class="pre">garch()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sim.html#btQuant.sim.gbm"><code class="docutils literal notranslate"><span class="pre">gbm()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sim.html#btQuant.sim.heston"><code class="docutils literal notranslate"><span class="pre">heston()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sim.html#btQuant.sim.levyOu"><code class="docutils literal notranslate"><span class="pre">levyOu()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sim.html#btQuant.sim.markovSwitching"><code class="docutils literal notranslate"><span class="pre">markovSwitching()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sim.html#btQuant.sim.ou"><code class="docutils literal notranslate"><span class="pre">ou()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sim.html#btQuant.sim.poisson"><code class="docutils literal notranslate"><span class="pre">poisson()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sim.html#btQuant.sim.simulate"><code class="docutils literal notranslate"><span class="pre">simulate()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sim.html#btQuant.sim.vasicek"><code class="docutils literal notranslate"><span class="pre">vasicek()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="dimension.html">dimension module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dimension.html#btQuant.dimension.ica"><code class="docutils literal notranslate"><span class="pre">ica()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="dimension.html#btQuant.dimension.isomap"><code class="docutils literal notranslate"><span class="pre">isomap()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="dimension.html#btQuant.dimension.kernelPca"><code class="docutils literal notranslate"><span class="pre">kernelPca()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="dimension.html#btQuant.dimension.lda"><code class="docutils literal notranslate"><span class="pre">lda()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="dimension.html#btQuant.dimension.mds"><code class="docutils literal notranslate"><span class="pre">mds()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="dimension.html#btQuant.dimension.nmf"><code class="docutils literal notranslate"><span class="pre">nmf()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="dimension.html#btQuant.dimension.pca"><code class="docutils literal notranslate"><span class="pre">pca()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="dimension.html#btQuant.dimension.tsne"><code class="docutils literal notranslate"><span class="pre">tsne()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="factor.html">factor module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="factor.html#btQuant.factor.appraisalRatio"><code class="docutils literal notranslate"><span class="pre">appraisalRatio()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="factor.html#btQuant.factor.apt"><code class="docutils literal notranslate"><span class="pre">apt()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="factor.html#btQuant.factor.capm"><code class="docutils literal notranslate"><span class="pre">capm()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="factor.html#btQuant.factor.carhart4"><code class="docutils literal notranslate"><span class="pre">carhart4()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="factor.html#btQuant.factor.estimateBeta"><code class="docutils literal notranslate"><span class="pre">estimateBeta()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="factor.html#btQuant.factor.estimateFactorLoading"><code class="docutils literal notranslate"><span class="pre">estimateFactorLoading()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="factor.html#btQuant.factor.factorMimicking"><code class="docutils literal notranslate"><span class="pre">factorMimicking()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="factor.html#btQuant.factor.famaFrench3"><code class="docutils literal notranslate"><span class="pre">famaFrench3()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="factor.html#btQuant.factor.informationRatio"><code class="docutils literal notranslate"><span class="pre">informationRatio()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="factor.html#btQuant.factor.jensenAlpha"><code class="docutils literal notranslate"><span class="pre">jensenAlpha()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="factor.html#btQuant.factor.multifactor"><code class="docutils literal notranslate"><span class="pre">multifactor()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="factor.html#btQuant.factor.pcaFactors"><code class="docutils literal notranslate"><span class="pre">pcaFactors()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="factor.html#btQuant.factor.rollingBeta"><code class="docutils literal notranslate"><span class="pre">rollingBeta()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="factor.html#btQuant.factor.trackingError"><code class="docutils literal notranslate"><span class="pre">trackingError()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="factor.html#btQuant.factor.treynorMazuy"><code class="docutils literal notranslate"><span class="pre">treynorMazuy()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="fit.html">fit module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="fit.html#btQuant.fit.aic"><code class="docutils literal notranslate"><span class="pre">aic()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="fit.html#btQuant.fit.bic"><code class="docutils literal notranslate"><span class="pre">bic()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="fit.html#btQuant.fit.fitAr1"><code class="docutils literal notranslate"><span class="pre">fitAr1()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="fit.html#btQuant.fit.fitArma"><code class="docutils literal notranslate"><span class="pre">fitArma()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="fit.html#btQuant.fit.fitCir"><code class="docutils literal notranslate"><span class="pre">fitCir()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="fit.html#btQuant.fit.fitCopula"><code class="docutils literal notranslate"><span class="pre">fitCopula()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="fit.html#btQuant.fit.fitDistributions"><code class="docutils literal notranslate"><span class="pre">fitDistributions()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="fit.html#btQuant.fit.fitGarch"><code class="docutils literal notranslate"><span class="pre">fitGarch()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="fit.html#btQuant.fit.fitGbm"><code class="docutils literal notranslate"><span class="pre">fitGbm()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="fit.html#btQuant.fit.fitHeston"><code class="docutils literal notranslate"><span class="pre">fitHeston()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="fit.html#btQuant.fit.fitJumpDiffusion"><code class="docutils literal notranslate"><span class="pre">fitJumpDiffusion()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="fit.html#btQuant.fit.fitLevyOu"><code class="docutils literal notranslate"><span class="pre">fitLevyOu()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="fit.html#btQuant.fit.fitOu"><code class="docutils literal notranslate"><span class="pre">fitOu()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="fit.html#btQuant.fit.fitVasicek"><code class="docutils literal notranslate"><span class="pre">fitVasicek()</span></code></a></li>
+</ul>
+</li>
+</ul>
 </div>
+</section>
+<section id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading"></a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
 </section>
 
 
            </div>
           </div>
-          <footer>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="options.html" class="btn btn-neutral float-right" title="options module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
 
   <hr/>
 
