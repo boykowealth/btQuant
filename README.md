@@ -263,4 +263,4 @@ This project is licensed under GPL-3.0.
 
 For information regarding the btQuant package, please contact any of the following:
 
-+ Brayden Boyko (braydenboyko@boykowealth.com) (Canada)
++ Brayden Boyko (brayden@sipglobally.com) (Canada)
