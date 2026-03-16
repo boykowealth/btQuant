@@ -3,18 +3,23 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "btQuant"
-version = "1.0.3"
+name = "sipquant"
+version = "1.0.0"
 authors = [
-  { name="Brayden Boyko", email="braydenboyko@boykowealth.com" }
+  { name="SIP Global", email="ops@sipglobal.com" }
 ]
-description = "Boyko Terminal Quantitative Finance Python Package Companion."
+description = "Quantitative library for physically-settled commodity markets. Pure NumPy."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "GPL" }
+license = { text = "MIT" }
 dependencies = [
     "numpy>=1.23"
 ]
 
 [project.urls]
-Homepage = "https://github.com/boykowealth/btQuant"
+Homepage = "https://github.com/sipglobal/sipquant"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
